@@ -1,17 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { useMasterAddress } from "../hooks/wallet/useMasterAddress";
 import { CustomSelect } from "../components/molecules/CustomSelect";
 import { useRouter } from "next/navigation";
 import { TabBar } from "../components/molecules/TabBar";
 import { cn } from '@/lib/utils/utils';
-import { useWalletList, useEnabledAssets } from "../hooks/useWalletAtoms";
+import { useWallet } from "../hooks/useWallet";
 import { useWalletBalance } from "../hooks/queries/useWalletBalance";
 import { Button, Input, Card } from "../components/ui";
 import { useQueryClient } from '@tanstack/react-query';
 import { regenerateAllWalletPrivateKeys, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
-import { useWallet } from "../hooks/wallet/useWallet";
 import { xrplFaucet } from "../lib/xrpl/xrpl-faucet";
 import { xrplClient } from "../lib/xrpl/xrpl-client";
 
@@ -120,35 +118,27 @@ const SwapIcon = ({ size = 32, color = '#F2A003' }) => (
 );
 
 export default function Home() {
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [walletSelectOpen, setWalletSelectOpen] = useState(false);
+  // State variables with explicit initialization
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const [walletSelectOpen, setWalletSelectOpen] = useState<boolean>(false);
   const [balanceType, setBalanceType] = useState<'잔액' | 'NFT'>('잔액');
   const balanceOptions = ['잔액', 'NFT'] as const;
   
   // useMasterAddress 훅 사용
-  const { masterAddress } = useMasterAddress();
 
   // React Query 클라이언트
   const queryClient = useQueryClient();
   
-  // 지갑 관련 hooks
-  const { generateNewAssetKey } = useWallet();
 
   // 새로운 atoms hooks 사용
   const {
-    walletList,
-    selectedWallet,
-    selectedWalletId,
-    setSelectedWalletId,
+    wallet: selectedWallet,
     isLoading: isWalletListLoading,
-    loadWallets,
-    refreshWalletList
-  } = useWalletList();
-
-  const {
     enabledAssets,
-    loadEnabledAssets
-  } = useEnabledAssets();
+    loadWallet,
+    refreshWallet,
+    updateEnabledAssets
+  } = useWallet();
 
   // XRPL 자산 잔액 데이터 가져오기
   const xrpBalance = useWalletBalance(
@@ -254,16 +244,8 @@ export default function Home() {
 
             // XRP의 경우만 실제 주소 생성
             if (symbol === 'XRP') {
-              const newAssetKey = await generateNewAssetKey(symbol, "m/44'/144'/0'/0/0");
-
-              if (newAssetKey) {
-                wallet.addresses[symbol] = newAssetKey.address;
-                wallet.privateKeys[symbol] = newAssetKey.privateKey;
-                walletsUpdated = true;
-                console.log(`✅ ${symbol} 주소 생성 완료: ${newAssetKey.address.substring(0, 10)}...`);
-              } else {
-                console.error(`❌ ${symbol} 주소 생성 실패`);
-              }
+              // XRPL 주소는 XRPL Client를 통해 생성
+              console.log(`${symbol} 주소는 XRPL Client를 통해 생성됩니다.`);
             }
           } catch (error) {
             console.error(`❌ ${symbol} 주소 생성 중 오류:`, error);
@@ -286,68 +268,60 @@ export default function Home() {
   };
 
   // 디버깅용 로그
-  console.log('메인 화면 상태:', {
+  console.log('메인 화면 상태 (단일지갑):', {
     enabledAssets,
     selectedWallet: selectedWallet ? {
       id: selectedWallet.id,
+      name: selectedWallet.name,
       addresses: selectedWallet.addresses
-    } : null
+    } : null,
+    isWalletLoading: isWalletListLoading
   });
 
-  // localStorage 디버깅
+  // localStorage 상세 디버깅
   if (typeof window !== 'undefined') {
+    console.log('=== localStorage 상세 디버깅 ===');
+
+    // hdWallets 확인
+    const savedWallets = localStorage.getItem('hdWallets');
+    console.log('저장된 지갑들 (raw):', savedWallets);
+    if (savedWallets) {
+      try {
+        const parsedWallets = JSON.parse(savedWallets);
+        console.log('파싱된 지갑들:', parsedWallets.length, '개');
+        parsedWallets.forEach((wallet: any, index: number) => {
+          console.log(`지갑 ${index + 1}:`, {
+            id: wallet.id,
+            name: wallet.name,
+            addresses: wallet.addresses ? Object.keys(wallet.addresses) : 'No addresses'
+          });
+        });
+      } catch (error) {
+        console.error('지갑 파싱 오류:', error);
+      }
+    }
+
+    // selectedWalletId 확인
+    const savedSelectedWalletId = localStorage.getItem('selectedWalletId');
+    console.log('저장된 선택 지갑 ID:', savedSelectedWalletId);
+
+    // enabledAssets 확인
     const savedEnabledAssets = localStorage.getItem('enabledAssets');
-    console.log('localStorage 저장된 자산:', savedEnabledAssets);
+    console.log('저장된 자산들 (raw):', savedEnabledAssets);
     if (savedEnabledAssets) {
       try {
         const parsed = JSON.parse(savedEnabledAssets);
         console.log('파싱된 저장 자산:', parsed);
         console.log('자산 심볼들:', parsed.map((a: any) => a.symbol));
       } catch (error) {
-        console.error('localStorage 파싱 오류:', error);
+        console.error('자산 파싱 오류:', error);
       }
     }
+
+    console.log('=== localStorage 디버깅 완료 ===');
   }
 
-  // HD Wallet 목록 로드 및 솔라나 마이그레이션
-  useEffect(() => {
-    const initializeApp = async () => {
-      // test-wallet 생성 (없으면 생성)
-      try {
-        console.log('=== test-wallet 생성 함수 호출 시작 ===');
-        const testWalletCreated = await createTestWalletIfNotExists();
-        console.log('test-wallet 생성 결과:', testWalletCreated);
-        console.log('=== test-wallet 생성 함수 호출 완료 ===');
-        
-        // test-wallet이 생성되었다면 즉시 지갑 목록과 활성화된 자산을 새로고침
-        if (testWalletCreated) {
-          console.log('test-wallet 생성됨, 상태 새로고침 중...');
-          // 약간의 지연을 주어 localStorage 업데이트가 완료되도록 함
-          await new Promise(resolve => setTimeout(resolve, 100));
-          loadWallets();
-          loadEnabledAssets();
-        }
-      } catch (error) {
-        console.error('test-wallet 생성 실패:', error);
-      }
-      
-      // XRPL 자산 확인 및 주소 생성
-      console.log('XRPL 자산 확인 완료');
-      
-      // 활성화된 자산들에 대한 주소 생성 (누락된 주소들 자동 생성)
-      try {
-        await ensureAllAddressesExist();
-      } catch (error) {
-        console.error('주소 생성 실패:', error);
-      }
-      
-      // 최종 지갑 목록 로드
-      loadWallets();
-      loadEnabledAssets();
-    };
-    
-    initializeApp();
-  }, []);
+  // 지갑 초기 로딩은 useWallet 훅에서 자동으로 처리됨
 
   // Faucet 관련 상태
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
@@ -361,10 +335,19 @@ export default function Home() {
 
     setIsFaucetLoading(true);
     try {
-      console.log('Faucet 요청 시작:', selectedWallet.addresses.XRP);
+      console.log('🚰 === Faucet 요청 시작 ===');
+      console.log('요청 주소:', selectedWallet.addresses.XRP);
+      console.log('선택된 지갑:', selectedWallet.name);
+
+      // XRPL 연결 확인
+      console.log('XRPL 클라이언트 연결 확인...');
+      const accountInfo = await xrplClient.getAccountInfo(selectedWallet.addresses.XRP);
+      console.log('Faucet 전 계정 정보:', accountInfo);
 
       // Faucet 가용성 확인
+      console.log('Faucet 가용성 확인 중...');
       const availability = await xrplFaucet.checkFaucetAvailability(selectedWallet.addresses.XRP);
+      console.log('Faucet 가용성:', availability);
 
       if (!availability.available) {
         if (availability.remainingTime) {
@@ -377,19 +360,32 @@ export default function Home() {
       }
 
       // Devnet Faucet 요청
+      console.log('XRPL Devnet Faucet API 호출 중...');
       const result = await xrplFaucet.requestDevnetXRP(selectedWallet.addresses.XRP);
+      console.log('Faucet API 응답:', result);
 
       if (result.success) {
         // Faucet 사용 기록
         xrplFaucet.recordFaucetUsage(selectedWallet.addresses.XRP);
 
+        console.log('✅ Faucet 성공! 잔액 새로고침 중...');
         alert(`✅ Faucet 성공!\n1000 XRP가 충전되었습니다.\n잔액: ${result.balance} drops`);
 
         // 잔액 새로고침
         invalidateBalanceCache();
+
+        // 5초 후 계정 상태 재확인
+        setTimeout(async () => {
+          const updatedAccountInfo = await xrplClient.getAccountInfo(selectedWallet.addresses.XRP);
+          console.log('Faucet 후 계정 정보:', updatedAccountInfo);
+        }, 5000);
+
       } else {
+        console.error('❌ Faucet 실패:', result.error);
         alert(`❌ Faucet 실패: ${result.error}`);
       }
+
+      console.log('🚰 === Faucet 요청 완료 ===');
     } catch (error) {
       console.error('Faucet 요청 오류:', error);
       alert('Faucet 요청 중 오류가 발생했습니다.');
@@ -398,10 +394,6 @@ export default function Home() {
     }
   };
 
-  // 활성화된 자산 로드
-  useEffect(() => {
-    loadEnabledAssets();
-  }, []);
 
   // 디버깅용 useEffect
   useEffect(() => {
@@ -433,8 +425,7 @@ export default function Home() {
 
     const handleWalletsUpdated = () => {
       console.log('지갑 업데이트 이벤트 수신');
-      refreshWalletList();
-      loadEnabledAssets();
+      refreshWallet();
     };
 
     window.addEventListener('assetsUpdated', handleAssetsUpdated as EventListener);
@@ -459,14 +450,13 @@ export default function Home() {
     return () => {
       window.removeEventListener('transferCompleted', handleTransferCompleted as EventListener);
     };
-  }, [masterAddress]);
+  }, []);
 
-  // 페이지 포커스 시 지갑 목록 새로고침
+  // 페이지 포커스 시 지갑 새로고침
   useEffect(() => {
     const handleFocus = () => {
-      refreshWalletList();
-      loadEnabledAssets(); // 활성화된 자산도 다시 로드
-      
+      refreshWallet();
+
       // 캐시 무효화로 잔액 데이터 새로고침
       invalidateBalanceCache();
     };
@@ -525,8 +515,14 @@ export default function Home() {
         setWalletSelectOpen(false);
       }
     };
-    if (profileOpen || walletSelectOpen) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+
+    if ((profileOpen === true) || (walletSelectOpen === true)) {
+      document.addEventListener('mousedown', handleClick);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+    };
   }, [profileOpen, walletSelectOpen]);
 
   return (
@@ -539,7 +535,7 @@ export default function Home() {
             <div className="relative" ref={walletSelectRef}>
               <button
                 className="select-button py-5 px-7 text-left text-2xl font-bold text-white bg-transparent border-none"
-                onClick={() => setWalletSelectOpen(!walletSelectOpen)}
+                onClick={() => setWalletSelectOpen(!(walletSelectOpen === true))}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -551,13 +547,13 @@ export default function Home() {
                 {selectedWallet?.name || 'xTalk Wallet'}
                 <span
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white font-bold text-lg"
-                  style={{ transform: walletSelectOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }}
+                  style={{ transform: (walletSelectOpen === true) ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }}
                 >
                   ▼
                 </span>
               </button>
 
-              {walletSelectOpen && (
+              {(walletSelectOpen === true) && (
                 <div className="dropdown-menu" style={{ top: 'calc(100% + 8px)' }}>
                   {/* 현재 지갑 표시 */}
                   {selectedWallet && (

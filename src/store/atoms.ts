@@ -16,3 +16,7 @@ export const enabledAssetsAtom = atom<string[]>([]);
 
 // 지갑 리스트 로딩 상태 atom
 export const walletListLoadingAtom = atom<boolean>(true);
+
+// 단일 지갑 atoms (단일 지갑 정책용)
+export const walletAtom = atom<WalletInfo | null>(null);
+export const walletLoadingAtom = atom<boolean>(true);
