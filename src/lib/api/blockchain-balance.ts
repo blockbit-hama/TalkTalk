@@ -629,43 +629,100 @@ export async function getSolanaTestnetBalance(address: string): Promise<Blockcha
   }
 }
 
+// XRPL 클라이언트 임포트
+import { xrplClient } from '../xrpl/xrpl-client';
+import { MOCK_TOKENS } from '../xrpl/xrpl-amm';
+
 /**
- * 심볼에 따른 블록체인 잔액 조회
+ * XRPL 자산 잔액 조회 (실제 XRPL 네트워크 연동)
+ */
+export async function getXRPLBalance(address: string, symbol: string): Promise<BlockchainBalance | null> {
+  try {
+    console.log(`XRPL 잔액 조회 시작: ${symbol} - ${address}`);
+
+    // XRPL 클라이언트가 연결되어 있지 않으면 연결
+    await xrplClient.connect();
+
+    if (symbol.toUpperCase() === 'XRP') {
+      // XRP 잔액 조회
+      const accountInfo = await xrplClient.getAccountInfo(address);
+
+      if (!accountInfo) {
+        console.log('XRP 계정 정보를 찾을 수 없음 (새 계정일 가능성)');
+        return {
+          address,
+          symbol: 'XRP',
+          balance: '0.000000',
+          decimals: 6,
+          network: 'xrpl'
+        };
+      }
+
+      // drops to XRP 변환 (1 XRP = 1,000,000 drops)
+      const balanceDrops = parseInt(accountInfo.balance, 10);
+      const balanceXRP = balanceDrops / 1000000;
+
+      console.log(`XRP 잔액 조회 성공: ${balanceXRP} XRP (${balanceDrops} drops)`);
+
+      return {
+        address,
+        symbol: 'XRP',
+        balance: balanceXRP.toFixed(6),
+        decimals: 6,
+        network: 'xrpl'
+      };
+    } else {
+      // 토큰 잔액 조회 (MOCK1, MOCK2 등)
+      const accountTokens = await xrplClient.getAccountTokens(address);
+
+      // Mock 토큰 정보 찾기
+      const mockToken = MOCK_TOKENS.find(token =>
+        token.currency === symbol.toUpperCase() ||
+        token.symbol === symbol.toUpperCase()
+      );
+
+      if (!mockToken) {
+        console.warn(`지원하지 않는 XRPL 토큰: ${symbol}`);
+        return null;
+      }
+
+      // 해당 토큰의 Trust Line 찾기
+      const tokenLine = accountTokens.find(token =>
+        token.currency === mockToken.currency &&
+        token.issuer === mockToken.issuer
+      );
+
+      const balance = tokenLine ? parseFloat(tokenLine.value) : 0;
+
+      console.log(`${symbol} 토큰 잔액 조회 성공: ${balance}`);
+
+      return {
+        address,
+        symbol: symbol.toUpperCase(),
+        balance: balance.toFixed(mockToken.decimals),
+        decimals: mockToken.decimals,
+        network: 'xrpl'
+      };
+    }
+  } catch (error) {
+    console.error(`XRPL 잔액 조회 중 오류 (${symbol}):`, error);
+
+    // 오류 발생 시 기본값 반환 (연결 실패, 계정 없음 등)
+    return {
+      address,
+      symbol: symbol.toUpperCase(),
+      balance: '0.000000',
+      decimals: symbol.toUpperCase() === 'XRP' ? 6 : 2,
+      network: 'xrpl'
+    };
+  }
+}
+
+/**
+ * 심볼에 따른 블록체인 잔액 조회 (XRPL 전용)
  */
 export async function getBlockchainBalance(address: string, symbol: string): Promise<BlockchainBalance | null> {
-  switch (symbol.toUpperCase()) {
-    case 'ETH':
-      return await getEthereumBalance(address);
-    case 'ETH-SEPOLIA':
-      return await getSepoliaBalance(address);
-    case 'ETH-GOERLI':
-      return await getGoerliBalance(address);
-    case 'BASE':
-      return await getBaseBalance(address);
-    case 'BASE-GOERLI':
-      return await getBaseGoerliBalance(address);
-    case 'BASE-SEPOLIA':
-      return await getBaseSepoliaBalance(address);
-    case 'SOL':
-      return await getSolanaBalance(address);
-    case 'SOL-DEVNET':
-      return await getSolanaDevnetBalance(address);
-    case 'SOL-TESTNET':
-      return await getSolanaTestnetBalance(address);
-    case 'BTC':
-      return await getBitcoinBalance(address);
-    case 'USDT':
-      return await getUSDTBalance(address);
-    case 'MATIC':
-      return await getPolygonBalance(address);
-    case 'BSC':
-      return await getBSCBalance(address);
-    case 'AVAX':
-      return await getAvalancheBalance(address);
-    default:
-      console.warn(`지원하지 않는 블록체인 심볼: ${symbol}`);
-      return null;
-  }
+  return await getXRPLBalance(address, symbol);
 }
 
 /**

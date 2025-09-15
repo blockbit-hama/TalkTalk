@@ -51,49 +51,53 @@ export default function AddAssetsPage() {
   const { updateEnabledAssets, loadEnabledAssets } = useEnabledAssets();
   const { generateNewAssetKey } = useWallet();
 
-  // 지원하는 암호화폐 목록 (기본 자산들 + 테스트넷)
+  // XRPL 전용 자산 목록
   const supportedAssets = [
-    { id: "btc", symbol: "BTC", name: "Bitcoin", icon: "₿", networkType: "Bitcoin Mainnet" },
-    { id: "eth", symbol: "ETH", name: "Ethereum", icon: "Ξ", networkType: "Ethereum Mainnet", rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/GPTx_vXGL4Z6NxRMjBTHowIQU8-Jt0c-" },
-    { id: "sol", symbol: "SOL", name: "Solana", icon: "◎", networkType: "Solana Mainnet", rpcUrl: "https://solana-mainnet.g.allthatnode.com/archive/json_rpc/006290a8b32b4a3e86cdc5c949333263" },
-    { id: "base", symbol: "BASE", name: "Base", icon: "B", networkType: "Base Mainnet", rpcUrl: "https://base-mainnet.g.allthatnode.com/archive/evm/006290a8b32b4a3e86cdc5c949333263" },
-    { id: "usdt", symbol: "USDT", name: "Tether", icon: "$", networkType: "Ethereum Mainnet" },
-    { id: "matic", symbol: "MATIC", name: "Polygon", icon: "M", networkType: "Polygon Mainnet" },
-    { id: "bsc", symbol: "BSC", name: "BNB", icon: "B", networkType: "BNB Smart Chain" },
-    { id: "avax", symbol: "AVAX", name: "Avalanche", icon: "A", networkType: "Avalanche C-Chain" },
-    // 테스트넷 자산들
-    { id: "eth-goerli", symbol: "ETH-GOERLI", name: "Ethereum Goerli", icon: "Ξ", isTestnet: true, networkType: "Ethereum Goerli Testnet", rpcUrl: "https://eth-goerli.g.alchemy.com/v2/your-api-key" },
-    { id: "eth-sepolia", symbol: "ETH-SEPOLIA", name: "Ethereum Sepolia", icon: "Ξ", isTestnet: true, networkType: "Ethereum Sepolia Testnet", rpcUrl: "https://eth-sepolia.g.alchemy.com/v2/hlm24QaedvTfFFy2vnHyP_lgadkFT1Sg" },
-    { id: "sol-devnet", symbol: "SOL-DEVNET", name: "Solana Devnet", icon: "◎", isTestnet: true, networkType: "Solana Devnet", rpcUrl: "https://solana-devnet.g.allthatnode.com/archive/json_rpc/006290a8b32b4a3e86cdc5c949333263" },
-    { id: "sol-testnet", symbol: "SOL-TESTNET", name: "Solana Testnet", icon: "◎", isTestnet: true, networkType: "Solana Testnet", rpcUrl: "https://api.testnet.solana.com" },
-    { id: "base-goerli", symbol: "BASE-GOERLI", name: "Base Goerli", icon: "B", isTestnet: true, networkType: "Base Goerli Testnet", rpcUrl: "https://goerli.base.org" },
-    { id: "base-sepolia", symbol: "BASE-SEPOLIA", name: "Base Sepolia", icon: "B", isTestnet: true, networkType: "Base Sepolia Testnet", rpcUrl: "https://base-sepolia.g.allthatnode.com/full/evm/006290a8b32b4a3e86cdc5c949333263" },
+    { id: "xrp", symbol: "XRP", name: "XRP", icon: "X", networkType: "XRPL Mainnet" },
+    { id: "mock-usd", symbol: "USD", name: "Mock USD", icon: "$", networkType: "XRPL Token", requiresTrustLine: true },
+    { id: "mock-eur", symbol: "EUR", name: "Mock EUR", icon: "€", networkType: "XRPL Token", requiresTrustLine: true },
+    { id: "mock-jpy", symbol: "JPY", name: "Mock JPY", icon: "¥", networkType: "XRPL Token", requiresTrustLine: true },
+    { id: "mock-krw", symbol: "KRW", name: "Mock KRW", icon: "₩", networkType: "XRPL Token", requiresTrustLine: true },
   ];
 
-  // 실시간 가격 정보 로드
+  // XRPL 자산 가격 정보 로드
   const loadAssetPrices = async () => {
-    // 메인넷 자산들만 가격 정보 조회 (테스트넷은 가격 정보 없음)
-    const mainnetSymbols = supportedAssets
-      .filter(asset => !asset.isTestnet)
-      .map(asset => asset.symbol);
-    
-    const cryptoPrices = await getCryptoPrices(mainnetSymbols);
+    // XRP 가격만 조회하고 Mock 토큰은 고정 가격 사용
+    const cryptoPrices = await getCryptoPrices(['XRP']);
 
-    // 가격 정보를 assets 배열에 매핑 (isEnabled는 기존 상태 유지)
+    // 가격 정보를 assets 배열에 매핑
     const assetsWithPrices = supportedAssets.map(asset => {
-      const priceData = cryptoPrices.find(price => price.symbol === asset.symbol);
+      let price = '$0.00';
+      let change = '0.00%';
+      let changeColor = '#A0A0B0';
+      
+      if (asset.symbol === 'XRP') {
+        const priceData = cryptoPrices.find(price => price.symbol === 'XRP');
+        price = priceData ? formatPrice(priceData.price) : '$0.50';
+        change = priceData ? formatChangePercentage(priceData.priceChangePercentage24h) : '0.00%';
+        changeColor = priceData ? getChangeColor(priceData.priceChangePercentage24h) : '#A0A0B0';
+      } else {
+        // Mock 토큰들은 고정 가격
+        const mockPrices: { [key: string]: string } = {
+          'USD': '$1.00',
+          'EUR': '$1.10',
+          'JPY': '$0.0067',
+          'KRW': '$0.00077',
+        };
+        price = mockPrices[asset.symbol] || '$1.00';
+        change = '0.00%';
+        changeColor = '#6FCF97';
+      }
       
       return {
         id: asset.id,
         symbol: asset.symbol,
         name: asset.name,
         icon: asset.icon,
-        price: asset.isTestnet ? 'Testnet' : (priceData ? formatPrice(priceData.price) : '$0.00'),
-        change: asset.isTestnet ? 'N/A' : (priceData ? formatChangePercentage(priceData.priceChangePercentage24h) : '0.00%'),
-        changeColor: asset.isTestnet ? '#A0A0B0' : (priceData ? getChangeColor(priceData.priceChangePercentage24h) : '#A0A0B0'),
+        price: price,
+        change: change,
+        changeColor: changeColor,
         isEnabled: false, // 초기값, 나중에 저장된 상태로 덮어씌워짐
-        isTestnet: asset.isTestnet,
-        rpcUrl: asset.rpcUrl,
         networkType: asset.networkType
       };
     });
@@ -375,11 +379,28 @@ export default function AddAssetsPage() {
           토글을 켜면 홈 화면에 해당 가상자산이 표시됩니다.
         </div>
         
-        {/* 메인넷 자산 섹션 */}
+        {/* Trust Line 설정 버튼 */}
         <div className="mb-6">
-          <h3 className="text-white font-semibold mb-3 text-lg">메인넷 자산</h3>
+          <button
+            onClick={() => router.push('/trustline')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <span>🔗</span>
+            Trust Line 설정하기 (토큰 받기 위해 필요)
+          </button>
+        </div>
+
+        {/* XRPL 자산 섹션 */}
+        <div className="mb-6">
+          <h3 className="text-white font-semibold mb-3 text-lg flex items-center gap-2">
+            <span className="text-[#F2A003]">🌐</span>
+            XRPL 자산
+          </h3>
+          <div className="text-gray-400 text-sm mb-3">
+            XRP Ledger 네트워크의 네이티브 자산과 토큰입니다.
+          </div>
           <div className="space-y-3">
-            {assets.filter(asset => !asset.isTestnet).map((asset) => (
+            {assets.map((asset) => (
               <div 
                 key={asset.id}
                 className="flex items-center justify-between p-4 rounded-xl"
@@ -390,34 +411,39 @@ export default function AddAssetsPage() {
                   {/* 아이콘 */}
                   <div 
                     className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg relative"
-                    style={{ 
-                      background: asset.symbol.includes('ETH') ? 'linear-gradient(135deg, #627EEA, #B2BFFF)' :
-                                asset.symbol.includes('SOL') ? 'linear-gradient(135deg, #9945FF, #14F195)' :
-                                asset.symbol.includes('BASE') ? 'linear-gradient(135deg, #0052FF, #4C5BB3)' :
-                                asset.symbol === 'BTC' ? 'linear-gradient(135deg, #F7931A, #FFB800)' :
-                                asset.symbol === 'USDT' ? 'linear-gradient(135deg, #26A17B, #baffd7)' :
-                                asset.symbol === 'MATIC' ? 'linear-gradient(135deg, #8247E5, #A855F7)' :
-                                asset.symbol === 'BSC' ? 'linear-gradient(135deg, #F3BA2F, #F7931A)' :
-                                asset.symbol === 'AVAX' ? 'linear-gradient(135deg, #E84142, #FF6B6B)' :
+                    style={{
+                      background: asset.symbol === 'XRP' ? 'linear-gradient(135deg, #23292F, #fff7d1)' :
+                                asset.symbol === 'USD' ? 'linear-gradient(135deg, #4CAF50, #388E3C)' :
+                                asset.symbol === 'EUR' ? 'linear-gradient(135deg, #2196F3, #1976D2)' :
+                                asset.symbol === 'JPY' ? 'linear-gradient(135deg, #E91E63, #C2185B)' :
+                                asset.symbol === 'KRW' ? 'linear-gradient(135deg, #FF9800, #F57C00)' :
                                 'linear-gradient(135deg, #2E5A88, #4C5BB3)'
                     }}
                   >
                     {asset.icon}
+                    {asset.symbol !== 'XRP' && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#F2A003] rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">M</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* 자산 정보 */}
                   <div>
                     <div className="text-white font-semibold flex items-center gap-2">
                       {asset.name}
+                      {asset.symbol !== 'XRP' && (
+                        <span className="text-xs bg-[#F2A003] text-white px-2 py-1 rounded-full">
+                          MOCK
+                        </span>
+                      )}
                     </div>
                     <div className="text-gray-400 text-sm">{asset.symbol}</div>
                     {asset.networkType && (
                       <div className="text-gray-500 text-xs">{asset.networkType}</div>
                     )}
-                    {asset.rpcUrl && (
-                      <div className="text-gray-600 text-xs max-w-xs truncate" title={asset.rpcUrl}>
-                        RPC: {asset.rpcUrl}
-                      </div>
+                    {(asset as any).requiresTrustLine && (
+                      <div className="text-yellow-500 text-xs mt-1">⚠️ Trust Line 필요</div>
                     )}
                   </div>
                 </div>
@@ -433,92 +459,15 @@ export default function AddAssetsPage() {
                 {/* 토글 버튼 */}
                 <div className="ml-4">
                   <button
-                    onClick={() => handleToggle(asset.id)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#F2A003] focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                      asset.isEnabled ? 'bg-[#F2A003]' : 'bg-gray-600'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        asset.isEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 테스트넷 자산 섹션 */}
-        <div className="mb-6">
-          <h3 className="text-white font-semibold mb-3 text-lg flex items-center gap-2">
-            <span className="text-[#F2A003]">🧪</span>
-            테스트넷 자산
-          </h3>
-          <div className="text-gray-400 text-sm mb-3">
-            개발 및 테스트용 네트워크입니다. 실제 가치가 없습니다.
-          </div>
-          <div className="space-y-3">
-            {assets.filter(asset => asset.isTestnet).map((asset) => (
-              <div 
-                key={asset.id}
-                className="flex items-center justify-between p-4 rounded-xl"
-                style={{ 
-                  background: '#1a1b1f',
-                  border: '1px solid #F2A003'
-                }}
-              >
-                {/* 자산 정보 */}
-                <div className="flex items-center gap-4">
-                  {/* 아이콘 */}
-                  <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg relative"
-                    style={{ 
-                      background: asset.symbol.includes('ETH') ? 'linear-gradient(135deg, #627EEA, #B2BFFF)' :
-                                asset.symbol.includes('SOL') ? 'linear-gradient(135deg, #9945FF, #14F195)' :
-                                asset.symbol.includes('BASE') ? 'linear-gradient(135deg, #0052FF, #4C5BB3)' :
-                                'linear-gradient(135deg, #2E5A88, #4C5BB3)'
+                    onClick={() => {
+                      if ((asset as any).requiresTrustLine && !asset.isEnabled) {
+                        if (confirm('이 토큰을 추가하려면 먼저 Trust Line을 설정해야 합니다. Trust Line 설정 페이지로 이동하시겠습니까?')) {
+                          router.push('/trustline');
+                        }
+                      } else {
+                        handleToggle(asset.id);
+                      }
                     }}
-                  >
-                    {asset.icon}
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#F2A003] rounded-full flex items-center justify-center">
-                      <span className="text-xs text-white font-bold">T</span>
-                    </div>
-                  </div>
-                  
-                  {/* 자산 정보 */}
-                  <div>
-                    <div className="text-white font-semibold flex items-center gap-2">
-                      {asset.name}
-                      <span className="text-xs bg-[#F2A003] text-white px-2 py-1 rounded-full">
-                        TESTNET
-                      </span>
-                    </div>
-                    <div className="text-gray-400 text-sm">{asset.symbol}</div>
-                    {asset.networkType && (
-                      <div className="text-gray-500 text-xs">{asset.networkType}</div>
-                    )}
-                    {asset.rpcUrl && (
-                      <div className="text-gray-600 text-xs max-w-xs truncate" title={asset.rpcUrl}>
-                        RPC: {asset.rpcUrl}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 가격 정보 */}
-                <div className="text-right">
-                  <div className="text-white font-semibold">{asset.price}</div>
-                  <div className="text-sm" style={{ color: asset.changeColor }}>
-                    {asset.change}
-                  </div>
-                </div>
-
-                {/* 토글 버튼 */}
-                <div className="ml-4">
-                  <button
-                    onClick={() => handleToggle(asset.id)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#F2A003] focus:ring-offset-2 focus:ring-offset-gray-800 ${
                       asset.isEnabled ? 'bg-[#F2A003]' : 'bg-gray-600'
                     }`}

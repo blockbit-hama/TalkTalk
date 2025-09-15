@@ -1,12 +1,15 @@
 import { ethers } from 'ethers';
-import { 
-  createEthereumTransaction, 
-  signTransaction, 
+import {
+  createEthereumTransaction,
+  signTransaction,
   sendSignedTransaction,
-  sendEthereumTransaction 
+  sendEthereumTransaction
 } from '../ethereum/transaction';
 import { sendSolanaTransaction, getSolanaBalance } from '../solana/transaction';
 import { Connection } from '@solana/web3.js';
+import { xrplClient } from '../xrpl/xrpl-client';
+import { MOCK_TOKENS } from '../xrpl/xrpl-amm';
+import { Wallet } from 'xrpl';
 
 // API 키들
 const INFURA_API_KEY = process.env.NEXT_PUBLIC_INFURA_API_KEY || 'your-infura-api-key';
@@ -115,8 +118,8 @@ export async function sendBitcoinTransaction(
   }
 }
 
-// 통합 전송 함수
-export async function sendBlockchainTransaction(
+// XRPL 전송 함수 (실제 XRPL 네트워크 연동)
+export async function sendXRPLTransaction(
   fromAddress: string,
   toAddress: string,
   amount: string,
@@ -124,6 +127,8 @@ export async function sendBlockchainTransaction(
   currency: string
 ): Promise<TransferResult> {
   try {
+    console.log(`실제 XRPL 전송 시작: ${amount} ${currency} from ${fromAddress} to ${toAddress}`);
+
     // currency가 undefined이거나 null인 경우 처리
     if (!currency) {
       throw new Error('통화 정보가 제공되지 않았습니다.');
@@ -140,53 +145,100 @@ export async function sendBlockchainTransaction(
       throw new Error('유효하지 않은 전송 금액입니다.');
     }
 
-    // 통화에 따라 적절한 네트워크 선택
-    let network: 'ethereum' | 'polygon' | 'bsc' | 'avalanche' | 'solana' | 'goerli' | 'sepolia';
-    
-    switch (currency.toUpperCase()) {
-      case 'ETH':
-      case 'ETHEREUM':
-        network = 'ethereum';
-        break;
-      case 'MATIC':
-      case 'POLYGON':
-        network = 'polygon';
-        break;
-      case 'BSC':
-      case 'BNB':
-        network = 'bsc';
-        break;
-      case 'AVAX':
-      case 'AVALANCHE':
-        network = 'avalanche';
-        break;
-      case 'SOL':
-      case 'SOLANA':
-        // 솔라나는 별도 처리
-        return await sendSolanaTransaction(fromAddress, toAddress, amount, privateKey, new Connection(RPC_ENDPOINTS.solana));
-      case 'ETH_GOERLI':
-        network = 'goerli';
-        break;
-      case 'ETH_SEPOLIA':
-        network = 'sepolia';
-        break;
-      case 'BTC':
-      case 'BITCOIN':
-        // 비트코인은 별도 처리
-        return await sendBitcoinTransaction(fromAddress, toAddress, amount, privateKey);
-      default:
-        throw new Error(`지원하지 않는 통화: ${currency}`);
+    // XRPL 클라이언트 연결
+    await xrplClient.connect();
+
+    // 지갑 설정
+    const wallet = Wallet.fromSeed(privateKey);
+    if (wallet.address !== fromAddress) {
+      throw new Error('지갑 주소가 일치하지 않습니다.');
     }
 
-    // 이더리움 기반 체인 전송
-    return await sendEthereumBasedTransaction(fromAddress, toAddress, amount, privateKey, network);
+    let txResult;
+
+    if (currency.toUpperCase() === 'XRP') {
+      // XRP 전송
+      const amountDrops = Math.floor(amountNum * 1000000).toString(); // XRP to drops
+
+      txResult = await xrplClient.sendXRP({
+        to: toAddress,
+        amount: amountDrops,
+        memo: `xTalk-Wallet transfer: ${amount} XRP`
+      });
+    } else {
+      // 토큰 전송 (USD, EUR, JPY, KRW)
+      const mockToken = MOCK_TOKENS.find(token =>
+        token.currency === currency.toUpperCase() ||
+        token.symbol === currency.toUpperCase()
+      );
+
+      if (!mockToken) {
+        throw new Error(`지원하지 않는 XRPL 토큰: ${currency}`);
+      }
+
+      txResult = await xrplClient.sendToken(
+        {
+          to: toAddress,
+          amount: amount,
+          memo: `xTalk-Wallet transfer: ${amount} ${currency}`
+        },
+        mockToken.currency,
+        mockToken.issuer
+      );
+    }
+
+    if (txResult && txResult.status === 'success') {
+      console.log(`XRPL 전송 성공: ${txResult.hash}`);
+
+      return {
+        success: true,
+        transactionHash: txResult.hash,
+        receipt: {
+          transactionHash: txResult.hash,
+          from: fromAddress,
+          to: toAddress,
+          amount: amount,
+          currency: currency,
+          status: 'success',
+          timestamp: txResult.timestamp
+        }
+      };
+    } else {
+      throw new Error('트랜잭션 실행 실패');
+    }
+
   } catch (error) {
-    console.error('블록체인 전송 실패:', error);
+    console.error('XRPL 전송 실패:', error);
+
+    let errorMessage = '알 수 없는 오류가 발생했습니다.';
+    if (error instanceof Error) {
+      if (error.message.includes('funds') || error.message.includes('balance')) {
+        errorMessage = '잔액이 부족합니다. 수수료와 전솨 금액을 확인해주세요.';
+      } else if (error.message.includes('network') || error.message.includes('connect')) {
+        errorMessage = '네트워크 연결 오류. XRPL Devnet 연결을 확인해주세요.';
+      } else if (error.message.includes('destination')) {
+        errorMessage = '수신자 주소가 올바르지 않습니다.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      error: errorMessage,
     };
   }
+}
+
+// 통합 전송 함수 (XRPL 전용)
+export async function sendBlockchainTransaction(
+  fromAddress: string,
+  toAddress: string,
+  amount: string,
+  privateKey: string,
+  currency: string
+): Promise<TransferResult> {
+  return await sendXRPLTransaction(fromAddress, toAddress, amount, privateKey, currency);
 }
 
 // 가스 가격 조회

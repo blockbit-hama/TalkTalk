@@ -97,7 +97,8 @@ export const useWallet = (): UseWalletReturn => {
   // 새로운 자산의 주소와 개인키 생성
   const generateNewAssetKey = async (symbol: string, derivationPath?: string): Promise<AssetPrivateKey | null> => {
     if (!selectedWallet) {
-      throw new Error('선택된 지갑이 없습니다.');
+      console.warn('선택된 지갑이 없습니다. 지갑이 생성될 때까지 대기하세요.');
+      return null;
     }
 
     try {

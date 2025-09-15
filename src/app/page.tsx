@@ -10,8 +10,10 @@ import { useWalletList, useEnabledAssets } from "../hooks/useWalletAtoms";
 import { useWalletBalance } from "../hooks/queries/useWalletBalance";
 import { Button, Input, Card } from "../components/ui";
 import { useQueryClient } from '@tanstack/react-query';
-import { regenerateAllWalletPrivateKeys, addSolanaToExistingWallets, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
+import { regenerateAllWalletPrivateKeys, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
 import { useWallet } from "../hooks/wallet/useWallet";
+import { xrplFaucet } from "../lib/xrpl/xrpl-faucet";
+import { xrplClient } from "../lib/xrpl/xrpl-client";
 
 // 더 세련된 코인 SVG 아이콘들 (gradient, 입체감, 라인 등)
 const XrpIcon = ({ size = 54 }: { size?: number }) => (
@@ -66,19 +68,6 @@ const UsdtIcon = ({ size = 54 }: { size?: number }) => (
     <circle cx="27" cy="27" r="27" fill="#1B1C22"/>
     <circle cx="27" cy="27" r="22" fill="url(#usdtG)"/>
     <text x="27" y="36" textAnchor="middle" fontWeight="bold" fontSize={size * 0.38} fill="#fff" fontFamily="monospace" style={{filter:'drop-shadow(0 1px 2px #0008)'}}>$</text>
-  </svg>
-);
-const SolIcon = ({ size = 54 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="solG" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FF6B6B"/>
-        <stop offset="100%" stopColor="#4ECDC4"/>
-      </linearGradient>
-    </defs>
-    <circle cx="27" cy="27" r="27" fill="#1B1C22"/>
-    <circle cx="27" cy="27" r="22" fill="url(#solG)"/>
-    <text x="27" y="36" textAnchor="middle" fontWeight="bold" fontSize={size * 0.45} fill="#fff" fontFamily="monospace" style={{filter:'drop-shadow(0 1px 2px #0008)'}}>◎</text>
   </svg>
 );
 
@@ -160,66 +149,18 @@ export default function Home() {
     loadEnabledAssets
   } = useEnabledAssets();
 
-  // React Query hooks로 잔액 데이터 가져오기
+  // XRPL 자산 잔액 데이터 가져오기
   const xrpBalance = useWalletBalance(
     selectedWallet?.addresses.XRP || '', 
     'XRP'
   );
-  const btcBalance = useWalletBalance(
-    selectedWallet?.addresses.BTC || '', 
-    'BTC'
+  const mock1Balance = useWalletBalance(
+    selectedWallet?.addresses.MOCK1 || '', 
+    'MOCK1'
   );
-  const ethBalance = useWalletBalance(
-    selectedWallet?.addresses.ETH || '', 
-    'ETH'
-  );
-  const usdtBalance = useWalletBalance(
-    selectedWallet?.addresses.USDT || '', 
-    'USDT'
-  );
-  const maticBalance = useWalletBalance(
-    selectedWallet?.addresses.MATIC || '', 
-    'MATIC'
-  );
-  const bscBalance = useWalletBalance(
-    selectedWallet?.addresses.BSC || '', 
-    'BSC'
-  );
-  const avaxBalance = useWalletBalance(
-    selectedWallet?.addresses.AVAX || '', 
-    'AVAX'
-  );
-  const solBalance = useWalletBalance(
-    selectedWallet?.addresses.SOL || '', 
-    'SOL'
-  );
-  const baseBalance = useWalletBalance(
-    selectedWallet?.addresses.BASE || '', 
-    'BASE'
-  );
-  const ethSepoliaBalance = useWalletBalance(
-    selectedWallet?.addresses['ETH-SEPOLIA'] || '', 
-    'ETH-SEPOLIA'
-  );
-  const solDevnetBalance = useWalletBalance(
-    selectedWallet?.addresses['SOL-DEVNET'] || '', 
-    'SOL-DEVNET'
-  );
-  const baseSepoliaBalance = useWalletBalance(
-    selectedWallet?.addresses['BASE-SEPOLIA'] || '', 
-    'BASE-SEPOLIA'
-  );
-  const ethGoerliBalance = useWalletBalance(
-    selectedWallet?.addresses['ETH-GOERLI'] || '', 
-    'ETH-GOERLI'
-  );
-  const baseGoerliBalance = useWalletBalance(
-    selectedWallet?.addresses['BASE-GOERLI'] || '', 
-    'BASE-GOERLI'
-  );
-  const solTestnetBalance = useWalletBalance(
-    selectedWallet?.addresses['SOL-TESTNET'] || '', 
-    'SOL-TESTNET'
+  const mock2Balance = useWalletBalance(
+    selectedWallet?.addresses.MOCK2 || '', 
+    'MOCK2'
   );
 
   // 잔액 데이터 캐시 무효화 함수
@@ -228,86 +169,26 @@ export default function Home() {
     console.log('잔액 캐시 무효화 완료');
   };
 
-  // 총 달러 금액 계산 (활성화된 자산들의 합계)
+  // 총 달러 금액 계산 (XRPL 자산들의 합계)
   const calculateTotalUSD = () => {
     if (!selectedWallet || !enabledAssets.length) return 0;
     
     let total = 0;
     
-    // 활성화된 자산들의 USD 가치 합계
+    // XRPL 자산들의 USD 가치 합계
     if (enabledAssets.includes('XRP') && xrpBalance.data) {
       const xrpValue = parseFloat(xrpBalance.data.usdValue.replace('$', '').replace(',', ''));
       total += xrpValue;
     }
     
-    if (enabledAssets.includes('BTC') && btcBalance.data) {
-      const btcValue = parseFloat(btcBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += btcValue;
+    if (enabledAssets.includes('MOCK1') && mock1Balance.data) {
+      const mock1Value = parseFloat(mock1Balance.data.usdValue.replace('$', '').replace(',', ''));
+      total += mock1Value;
     }
     
-    if (enabledAssets.includes('ETH') && ethBalance.data) {
-      const ethValue = parseFloat(ethBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += ethValue;
-    }
-    
-    if (enabledAssets.includes('USDT') && usdtBalance.data) {
-      const usdtValue = parseFloat(usdtBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += usdtValue;
-    }
-    
-    if (enabledAssets.includes('MATIC') && maticBalance.data) {
-      const maticValue = parseFloat(maticBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += maticValue;
-    }
-    
-    if (enabledAssets.includes('BSC') && bscBalance.data) {
-      const bscValue = parseFloat(bscBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += bscValue;
-    }
-    
-    if (enabledAssets.includes('AVAX') && avaxBalance.data) {
-      const avaxValue = parseFloat(avaxBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += avaxValue;
-    }
-    
-    if (enabledAssets.includes('SOL') && solBalance.data) {
-      const solValue = parseFloat(solBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += solValue;
-    }
-    
-    if (enabledAssets.includes('BASE') && baseBalance.data) {
-      const baseValue = parseFloat(baseBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += baseValue;
-    }
-    
-    if (enabledAssets.includes('ETH-SEPOLIA') && ethSepoliaBalance.data) {
-      const ethSepoliaValue = parseFloat(ethSepoliaBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += ethSepoliaValue;
-    }
-    
-    if (enabledAssets.includes('SOL-DEVNET') && solDevnetBalance.data) {
-      const solDevnetValue = parseFloat(solDevnetBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += solDevnetValue;
-    }
-    
-    if (enabledAssets.includes('BASE-SEPOLIA') && baseSepoliaBalance.data) {
-      const baseSepoliaValue = parseFloat(baseSepoliaBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += baseSepoliaValue;
-    }
-    
-    if (enabledAssets.includes('ETH-GOERLI') && ethGoerliBalance.data) {
-      const ethGoerliValue = parseFloat(ethGoerliBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += ethGoerliValue;
-    }
-    
-    if (enabledAssets.includes('BASE-GOERLI') && baseGoerliBalance.data) {
-      const baseGoerliValue = parseFloat(baseGoerliBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += baseGoerliValue;
-    }
-    
-    if (enabledAssets.includes('SOL-TESTNET') && solTestnetBalance.data) {
-      const solTestnetValue = parseFloat(solTestnetBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += solTestnetValue;
+    if (enabledAssets.includes('MOCK2') && mock2Balance.data) {
+      const mock2Value = parseFloat(mock2Balance.data.usdValue.replace('$', '').replace(',', ''));
+      total += mock2Value;
     }
     
     return total;
@@ -350,38 +231,38 @@ export default function Home() {
         for (const symbol of missingAssets) {
           try {
             console.log(`${symbol} 주소 생성 중...`);
-            
-            // 자산에 따른 파생 경로 결정
-            let derivationPath: string | undefined;
-            
-            if (symbol.includes('SOL')) {
-              // 솔라나 계열 (메인넷, 테스트넷, 데브넷)
-              derivationPath = "m/44'/501'/0'/0/0";
-            } else if (symbol.includes('ETH') || symbol.includes('BASE')) {
-              // 이더리움 계열 (메인넷, 테스트넷)
-              const existingEthAddresses = enabledSymbols.filter(s => s.includes('ETH') || s.includes('BASE'));
-              derivationPath = getNextEthAddressPath(existingEthAddresses);
-            } else {
-              // 다른 토큰들 (account로 구분)
-              const existingAssets = enabledSymbols.filter(s => 
-                s !== 'BTC' && 
-                !s.includes('ETH') && 
-                !s.includes('SOL') && 
-                !s.includes('BASE')
-              );
-              derivationPath = getNextAccountPath(existingAssets);
+
+            // XRPL 토큰들은 XRP 주소와 동일한 주소를 사용
+            if (['USD', 'CNY', 'EUR', 'TST'].includes(symbol)) {
+              if (wallet.addresses.XRP && wallet.privateKeys.XRP) {
+                wallet.addresses[symbol] = wallet.addresses.XRP;
+                wallet.privateKeys[symbol] = wallet.privateKeys.XRP;
+                walletsUpdated = true;
+                console.log(`✅ ${symbol} 주소 설정 완료 (XRP 주소 공유): ${wallet.addresses.XRP.substring(0, 10)}...`);
+              } else {
+                console.error(`❌ ${symbol} 주소 설정 실패: XRP 주소가 없음`);
+              }
+              continue;
             }
-            
-            console.log(`${symbol} 파생 경로:`, derivationPath);
-            const newAssetKey = await generateNewAssetKey(symbol, derivationPath);
-            
-            if (newAssetKey) {
-              wallet.addresses[symbol] = newAssetKey.address;
-              wallet.privateKeys[symbol] = newAssetKey.privateKey;
-              walletsUpdated = true;
-              console.log(`✅ ${symbol} 주소 생성 완료: ${newAssetKey.address.substring(0, 10)}...`);
-            } else {
-              console.error(`❌ ${symbol} 주소 생성 실패`);
+
+            // 다른 체인 토큰들 (더 이상 사용하지 않으므로 스킵)
+            if (symbol.includes('ETH') || symbol.includes('SOL') || symbol.includes('BASE')) {
+              console.log(`${symbol}은 XRPL 전용 지갑에서 지원하지 않습니다.`);
+              continue;
+            }
+
+            // XRP의 경우만 실제 주소 생성
+            if (symbol === 'XRP') {
+              const newAssetKey = await generateNewAssetKey(symbol, "m/44'/144'/0'/0/0");
+
+              if (newAssetKey) {
+                wallet.addresses[symbol] = newAssetKey.address;
+                wallet.privateKeys[symbol] = newAssetKey.privateKey;
+                walletsUpdated = true;
+                console.log(`✅ ${symbol} 주소 생성 완료: ${newAssetKey.address.substring(0, 10)}...`);
+              } else {
+                console.error(`❌ ${symbol} 주소 생성 실패`);
+              }
             }
           } catch (error) {
             console.error(`❌ ${symbol} 주소 생성 중 오류:`, error);
@@ -408,10 +289,8 @@ export default function Home() {
     enabledAssets,
     selectedWallet: selectedWallet ? {
       id: selectedWallet.id,
-      addresses: selectedWallet.addresses,
-      hasSOL: !!selectedWallet.addresses.SOL
-    } : null,
-    solBalance: solBalance.data
+      addresses: selectedWallet.addresses
+    } : null
   });
 
   // localStorage 디버깅
@@ -451,13 +330,8 @@ export default function Home() {
         console.error('test-wallet 생성 실패:', error);
       }
       
-      // 기존 지갑들에 솔라나 주소 추가 (마이그레이션)
-      try {
-        const result = await addSolanaToExistingWallets();
-        console.log('솔라나 마이그레이션 결과:', result);
-      } catch (error) {
-        console.error('솔라나 마이그레이션 실패:', error);
-      }
+      // XRPL 자산 확인 및 주소 생성
+      console.log('XRPL 자산 확인 완료');
       
       // 활성화된 자산들에 대한 주소 생성 (누락된 주소들 자동 생성)
       try {
@@ -474,6 +348,55 @@ export default function Home() {
     initializeApp();
   }, []);
 
+  // Faucet 관련 상태
+  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
+
+  // Faucet 요청 함수
+  const handleFaucetRequest = async () => {
+    if (!selectedWallet?.addresses.XRP) {
+      alert('XRP 주소를 찾을 수 없습니다.');
+      return;
+    }
+
+    setIsFaucetLoading(true);
+    try {
+      console.log('Faucet 요청 시작:', selectedWallet.addresses.XRP);
+
+      // Faucet 가용성 확인
+      const availability = await xrplFaucet.checkFaucetAvailability(selectedWallet.addresses.XRP);
+
+      if (!availability.available) {
+        if (availability.remainingTime) {
+          const hours = Math.ceil(availability.remainingTime / (1000 * 60 * 60));
+          alert(`Faucet 한도 초과: ${hours}시간 후 다시 시도해주세요.`);
+        } else {
+          alert(`Faucet 사용 불가: ${availability.reason}`);
+        }
+        return;
+      }
+
+      // Devnet Faucet 요청
+      const result = await xrplFaucet.requestDevnetXRP(selectedWallet.addresses.XRP);
+
+      if (result.success) {
+        // Faucet 사용 기록
+        xrplFaucet.recordFaucetUsage(selectedWallet.addresses.XRP);
+
+        alert(`✅ Faucet 성공!\n1000 XRP가 충전되었습니다.\n잔액: ${result.balance} drops`);
+
+        // 잔액 새로고침
+        invalidateBalanceCache();
+      } else {
+        alert(`❌ Faucet 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Faucet 요청 오류:', error);
+      alert('Faucet 요청 중 오류가 발생했습니다.');
+    } finally {
+      setIsFaucetLoading(false);
+    }
+  };
+
   // 활성화된 자산 로드
   useEffect(() => {
     loadEnabledAssets();
@@ -484,45 +407,21 @@ export default function Home() {
     if (selectedWallet) {
       console.log('선택된 지갑:', selectedWallet);
       console.log('활성화된 자산:', enabledAssets);
-      console.log('MATIC 주소 존재:', !!selectedWallet.addresses.MATIC);
-      console.log('MATIC 주소 값:', selectedWallet.addresses.MATIC);
-      console.log('MATIC 활성화됨:', enabledAssets.includes('MATIC'));
       console.log('모든 주소들:', selectedWallet.addresses);
       
-      // 테스트넷 자산 상태 확인
-      const testnetAssets = ['ETH-SEPOLIA', 'ETH-GOERLI', 'BASE-SEPOLIA', 'BASE-GOERLI', 'SOL-DEVNET', 'SOL-TESTNET'];
-      testnetAssets.forEach(symbol => {
+      // XRPL 자산 상태 확인
+      const xrplAssets = ['XRP', 'MOCK1', 'MOCK2'];
+      xrplAssets.forEach(symbol => {
         console.log(`${symbol} 주소:`, selectedWallet.addresses[symbol]);
         console.log(`${symbol} 활성화됨:`, enabledAssets.includes(symbol));
       });
       
       // 잔액 데이터 디버깅
-      console.log('BTC 잔액 데이터:', btcBalance.data);
-      console.log('ETH 잔액 데이터:', ethBalance.data);
-      console.log('USDT 잔액 데이터:', usdtBalance.data);
-      console.log('MATIC 잔액 데이터:', maticBalance.data);
-      console.log('BSC 잔액 데이터:', bscBalance.data);
-      console.log('AVAX 잔액 데이터:', avaxBalance.data);
-      console.log('SOL 잔액 데이터:', solBalance.data);
-      console.log('BASE 잔액 데이터:', baseBalance.data);
-      console.log('ETH-SEPOLIA 잔액 데이터:', ethSepoliaBalance.data);
-      console.log('SOL-DEVNET 잔액 데이터:', solDevnetBalance.data);
-      
-      // 테스트넷 자산 디버깅
-      console.log('ETH-SEPOLIA 주소:', selectedWallet.addresses['ETH-SEPOLIA']);
-      console.log('ETH-SEPOLIA 활성화됨:', enabledAssets.includes('ETH-SEPOLIA'));
-      console.log('ETH-GOERLI 주소:', selectedWallet.addresses['ETH-GOERLI']);
-      console.log('ETH-GOERLI 활성화됨:', enabledAssets.includes('ETH-GOERLI'));
-      console.log('BASE-SEPOLIA 주소:', selectedWallet.addresses['BASE-SEPOLIA']);
-      console.log('BASE-SEPOLIA 활성화됨:', enabledAssets.includes('BASE-SEPOLIA'));
-      console.log('SOL-DEVNET 주소:', selectedWallet.addresses['SOL-DEVNET']);
-      console.log('SOL-DEVNET 활성화됨:', enabledAssets.includes('SOL-DEVNET'));
-      console.log('BASE-SEPOLIA 잔액 데이터:', baseSepoliaBalance.data);
-      console.log('ETH-GOERLI 잔액 데이터:', ethGoerliBalance.data);
-      console.log('BASE-GOERLI 잔액 데이터:', baseGoerliBalance.data);
-      console.log('SOL-TESTNET 잔액 데이터:', solTestnetBalance.data);
+      console.log('XRP 잔액 데이터:', xrpBalance.data);
+      console.log('MOCK1 잔액 데이터:', mock1Balance.data);
+      console.log('MOCK2 잔액 데이터:', mock2Balance.data);
     }
-      }, [selectedWallet, enabledAssets, btcBalance.data, ethBalance.data, usdtBalance.data, maticBalance.data, bscBalance.data, avaxBalance.data, solBalance.data, baseBalance.data, ethSepoliaBalance.data, solDevnetBalance.data, baseSepoliaBalance.data, ethGoerliBalance.data, baseGoerliBalance.data, solTestnetBalance.data]);
+      }, [selectedWallet, enabledAssets, xrpBalance.data, mock1Balance.data, mock2Balance.data]);
 
   // assetsUpdated 이벤트 수신
   useEffect(() => {
@@ -594,13 +493,21 @@ export default function Home() {
   // 코인별 아이콘 매핑
   const getCoinIcon = (symbol: string, size: number = 54) => {
     if (symbol === 'XRP') return <XrpIcon size={size} />;
-    if (symbol === 'BTC') return <BtcIcon size={size} />;
-    if (symbol === 'ETH') return <EthIcon size={size} />;
-    if (symbol === 'USDT') return <UsdtIcon size={size} />;
-    if (symbol === 'SOL') return <SolIcon size={size} />;
-    if (symbol === 'BASE') return <BaseIcon size={size} />;
-    if (symbol.includes('ETH') || symbol.includes('BASE')) return <EthIcon size={size} />;
-    if (symbol.includes('SOL')) return <SolIcon size={size} />;
+    if (symbol === 'USD') return (
+      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xl">
+        $
+      </div>
+    );
+    if (symbol === 'CNY') return (
+      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold text-xl">
+        ¥
+      </div>
+    );
+    if (symbol === 'EUR') return (
+      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
+        €
+      </div>
+    );
     return <span style={{ width: size, height: size, display: 'inline-block' }} />;
   };
 
@@ -622,35 +529,15 @@ export default function Home() {
       {/* 탑바 */}
       <nav className="top-bar">
         <div className="top-bar-inner">
-          {/* 지갑 콤보박스 */}
+          {/* xTalk Wallet 제품명 */}
           <div className="wallet-select-container">
-            <CustomSelect
-              value={selectedWalletId}
-              options={
-                isWalletListLoading
-                  ? [{ value: '', label: '로딩 중...' }]
-                  : [
-                      ...walletList.map(w => ({ value: w.id, label: w.name })),
-                      { value: 'create-new', label: '+ 새 지갑 추가' }
-                    ]
-              }
-              onChange={(value) => {
-                if (value === 'create-new') {
-                  router.push('/create-wallet');
-                } else {
-                  setSelectedWalletId(value);
-                }
-              }}
-              width={260}
-              height={68}
-              fontSize={24}
-              padding="20px 56px 20px 28px"
-              accentColor="#F2A003"
-            />
+            <div className="px-7 py-5">
+              <span className="text-2xl font-bold text-white">xTalk Wallet</span>
+            </div>
           </div>
           {/* QR 코드 스캔 버튼 */}
           <div>
-            <button 
+            <button
               className="profile-button"
               aria-label="QR 스캔"
               onClick={() => alert('QR 스캔 기능은 추후 구현 예정입니다.')}
@@ -668,26 +555,35 @@ export default function Home() {
           <div className="main-summary-amount">${totalUSD.toFixed(2)}</div>
         </div>
         
-        {/* 전송/수신/스왑 버튼 */}
+        {/* 전송/스왑/Faucet 버튼 */}
         <div className="main-action-button-group">
-          <button 
+          <button
             className="main-action-button"
             onClick={() => router.push('/transfer')}
           >
             전송
           </button>
-          <button 
-            className="main-action-receive-button"
-            onClick={() => router.push('/receive')}
-          >
-            수신
-          </button>
-          <button 
+          <button
             className="main-action-swap-button"
             onClick={() => router.push('/swap')}
           >
             <SwapIcon />
           </button>
+
+          {/* XRPL Devnet Faucet 버튼 */}
+          {selectedWallet?.addresses.XRP && (
+            <button
+              className="main-action-button"
+              onClick={handleFaucetRequest}
+              disabled={isFaucetLoading}
+              style={{
+                backgroundColor: isFaucetLoading ? '#666' : '#F2A003',
+                opacity: isFaucetLoading ? 0.6 : 1
+              }}
+            >
+              {isFaucetLoading ? '충전 중...' : 'Faucet'}
+            </button>
+          )}
         </div>
         
         {/* 잔액 콤보박스 */}
@@ -705,17 +601,17 @@ export default function Home() {
           />
         </div>
         
-        {/* 잔액 리스트 */}
+        {/* XRPL 자산 잔액 리스트 */}
         <div className="balance-list">
           {selectedWallet && (
             <>
               {selectedWallet.addresses.XRP && enabledAssets.includes('XRP') && (
                 <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <XrpIcon size={60} />
+                  <XrpIcon size={72} />
                   <div className="balance-card-inner">
                     <span className="balance-card-name">XRP</span>
                     <span className="balance-card-usd" style={{ color: xrpBalance.data?.changeColor || '#6FCF97' }}>
-                      {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.price ? `${xrpBalance.data.price} ${xrpBalance.data.change}` : '$0.00 0.00%'}
+                      {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.price ? `${xrpBalance.data.price} ${xrpBalance.data.change}` : '$0.50 0.00%'}
                     </span>
                   </div>
                   <div className="flex flex-col items-end ml-auto">
@@ -729,288 +625,67 @@ export default function Home() {
                 </div>
               )}
               
-              {selectedWallet.addresses.BTC && enabledAssets.includes('BTC') && (
+              {selectedWallet.addresses.USD && enabledAssets.includes('USD') && (
                 <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <BtcIcon size={60} />
+                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xl">
+                    $
+                  </div>
                   <div className="balance-card-inner">
-                    <span className="balance-card-name">BTC</span>
-                    <span className="balance-card-usd" style={{ color: btcBalance.data?.changeColor || '#6FCF97' }}>
-                      {btcBalance.isLoading ? '로딩 중...' : btcBalance.data?.price ? `${btcBalance.data.price} ${btcBalance.data.change}` : '$0.00 0.00%'}
+                    <span className="balance-card-name">Devnet USD</span>
+                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
+                      $1.00 0.00%
                     </span>
                   </div>
                   <div className="flex flex-col items-end ml-auto">
                     <span className="balance-card-amount">
-                      {btcBalance.isLoading ? '로딩 중...' : btcBalance.data?.balance || '0.00000'}
+                      0.000000
                     </span>
                     <span className="balance-card-sub-usd">
-                      {btcBalance.isLoading ? '로딩 중...' : btcBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {selectedWallet.addresses.ETH && enabledAssets.includes('ETH') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <EthIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">ETH</span>
-                    <span className="balance-card-usd" style={{ color: ethBalance.data?.changeColor || '#EB5757' }}>
-                      {ethBalance.isLoading ? '로딩 중...' : ethBalance.data?.price ? `${ethBalance.data.price} ${ethBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {ethBalance.isLoading ? '로딩 중...' : ethBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {ethBalance.isLoading ? '로딩 중...' : ethBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {selectedWallet.addresses.USDT && enabledAssets.includes('USDT') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <UsdtIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">USDT</span>
-                    <span className="balance-card-usd" style={{ color: usdtBalance.data?.changeColor || '#EB5757' }}>
-                      {usdtBalance.isLoading ? '로딩 중...' : usdtBalance.data?.price ? `${usdtBalance.data.price} ${usdtBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {usdtBalance.isLoading ? '로딩 중...' : usdtBalance.data?.balance || '0.00'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {usdtBalance.isLoading ? '로딩 중...' : usdtBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {selectedWallet.addresses.SOL && enabledAssets.includes('SOL') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <SolIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">SOL</span>
-                    <span className="balance-card-usd" style={{ color: solBalance.data?.changeColor || '#EB5757' }}>
-                      {solBalance.isLoading ? '로딩 중...' : solBalance.data?.price ? `${solBalance.data.price} ${solBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {solBalance.isLoading ? '로딩 중...' : solBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {solBalance.isLoading ? '로딩 중...' : solBalance.data?.usdValue || '$0.00'}
+                      $0.00
                     </span>
                   </div>
                 </div>
               )}
 
-              {selectedWallet.addresses.BASE && enabledAssets.includes('BASE') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <BaseIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">BASE</span>
-                    <span className="balance-card-usd" style={{ color: baseBalance.data?.changeColor || '#6FCF97' }}>
-                      {baseBalance.isLoading ? '로딩 중...' : baseBalance.data?.price ? `${baseBalance.data.price} ${baseBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {baseBalance.isLoading ? '로딩 중...' : baseBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {baseBalance.isLoading ? '로딩 중...' : baseBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['ETH-SEPOLIA'] && enabledAssets.includes('ETH-SEPOLIA') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <EthIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">ETH-SEPOLIA</span>
-                    <span className="balance-card-usd" style={{ color: ethSepoliaBalance.data?.changeColor || '#6FCF97' }}>
-                      {ethSepoliaBalance.isLoading ? '로딩 중...' : ethSepoliaBalance.data?.price ? `${ethSepoliaBalance.data.price} ${ethSepoliaBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {ethSepoliaBalance.isLoading ? '로딩 중...' : ethSepoliaBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {ethSepoliaBalance.isLoading ? '로딩 중...' : ethSepoliaBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['SOL-DEVNET'] && enabledAssets.includes('SOL-DEVNET') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <SolIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">SOL-DEVNET</span>
-                    <span className="balance-card-usd" style={{ color: solDevnetBalance.data?.changeColor || '#6FCF97' }}>
-                      {solDevnetBalance.isLoading ? '로딩 중...' : solDevnetBalance.data?.price ? `${solDevnetBalance.data.price} ${solDevnetBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {solDevnetBalance.isLoading ? '로딩 중...' : solDevnetBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {solDevnetBalance.isLoading ? '로딩 중...' : solDevnetBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['BASE-SEPOLIA'] && enabledAssets.includes('BASE-SEPOLIA') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <BaseIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">BASE-SEPOLIA</span>
-                    <span className="balance-card-usd" style={{ color: baseSepoliaBalance.data?.changeColor || '#6FCF97' }}>
-                      {baseSepoliaBalance.isLoading ? '로딩 중...' : baseSepoliaBalance.data?.price ? `${baseSepoliaBalance.data.price} ${baseSepoliaBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {baseSepoliaBalance.isLoading ? '로딩 중...' : baseSepoliaBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {baseSepoliaBalance.isLoading ? '로딩 중...' : baseSepoliaBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['ETH-GOERLI'] && enabledAssets.includes('ETH-GOERLI') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <EthIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">ETH-GOERLI</span>
-                    <span className="balance-card-usd" style={{ color: ethGoerliBalance.data?.changeColor || '#6FCF97' }}>
-                      {ethGoerliBalance.isLoading ? '로딩 중...' : ethGoerliBalance.data?.price ? `${ethGoerliBalance.data.price} ${ethGoerliBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {ethGoerliBalance.isLoading ? '로딩 중...' : ethGoerliBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {ethGoerliBalance.isLoading ? '로딩 중...' : ethGoerliBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['BASE-GOERLI'] && enabledAssets.includes('BASE-GOERLI') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <BaseIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">BASE-GOERLI</span>
-                    <span className="balance-card-usd" style={{ color: baseGoerliBalance.data?.changeColor || '#6FCF97' }}>
-                      {baseGoerliBalance.isLoading ? '로딩 중...' : baseGoerliBalance.data?.price ? `${baseGoerliBalance.data.price} ${baseGoerliBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {baseGoerliBalance.isLoading ? '로딩 중...' : baseGoerliBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {baseGoerliBalance.isLoading ? '로딩 중...' : baseGoerliBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses['SOL-TESTNET'] && enabledAssets.includes('SOL-TESTNET') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <SolIcon size={60} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">SOL-TESTNET</span>
-                    <span className="balance-card-usd" style={{ color: solTestnetBalance.data?.changeColor || '#6FCF97' }}>
-                      {solTestnetBalance.isLoading ? '로딩 중...' : solTestnetBalance.data?.price ? `${solTestnetBalance.data.price} ${solTestnetBalance.data.change}` : 'Testnet N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {solTestnetBalance.isLoading ? '로딩 중...' : solTestnetBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {solTestnetBalance.isLoading ? '로딩 중...' : solTestnetBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* 다른 체인들 */}
-              {enabledAssets.includes('MATIC') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                    M
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">MATIC</span>
-                    <span className="balance-card-usd" style={{ color: maticBalance.data?.changeColor || '#6FCF97' }}>
-                      {maticBalance.isLoading ? '로딩 중...' : maticBalance.data?.price ? `${maticBalance.data.price} ${maticBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {maticBalance.isLoading ? '로딩 중...' : maticBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {maticBalance.isLoading ? '로딩 중...' : maticBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {enabledAssets.includes('BSC') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold text-xl">
-                    B
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">BSC</span>
-                    <span className="balance-card-usd" style={{ color: bscBalance.data?.changeColor || '#6FCF97' }}>
-                      {bscBalance.isLoading ? '로딩 중...' : bscBalance.data?.price ? `${bscBalance.data.price} ${bscBalance.data.change}` : '$0.00 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {bscBalance.isLoading ? '로딩 중...' : bscBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {bscBalance.isLoading ? '로딩 중...' : bscBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {enabledAssets.includes('AVAX') && (
+              {selectedWallet.addresses.CNY && enabledAssets.includes('CNY') && (
                 <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
                   <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold text-xl">
-                    A
+                    ¥
                   </div>
                   <div className="balance-card-inner">
-                    <span className="balance-card-name">AVAX</span>
-                    <span className="balance-card-usd" style={{ color: avaxBalance.data?.changeColor || '#EB5757' }}>
-                      {avaxBalance.isLoading ? '로딩 중...' : avaxBalance.data?.price ? `${avaxBalance.data.price} ${avaxBalance.data.change}` : '$0.00 0.00%'}
+                    <span className="balance-card-name">Devnet CNY</span>
+                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
+                      ¥7.20 0.00%
                     </span>
                   </div>
                   <div className="flex flex-col items-end ml-auto">
                     <span className="balance-card-amount">
-                      {avaxBalance.isLoading ? '로딩 중...' : avaxBalance.data?.balance || '0.00000'}
+                      0.000000
                     </span>
                     <span className="balance-card-sub-usd">
-                      {avaxBalance.isLoading ? '로딩 중...' : avaxBalance.data?.usdValue || '$0.00'}
+                      $0.00
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {selectedWallet.addresses.EUR && enabledAssets.includes('EUR') && (
+                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
+                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
+                    €
+                  </div>
+                  <div className="balance-card-inner">
+                    <span className="balance-card-name">Devnet EUR</span>
+                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
+                      €0.92 0.00%
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end ml-auto">
+                    <span className="balance-card-amount">
+                      0.000000
+                    </span>
+                    <span className="balance-card-sub-usd">
+                      $0.00
                     </span>
                   </div>
                 </div>
@@ -1041,9 +716,9 @@ export default function Home() {
         )}
         
         
-        {/* D'Cent Wallet 워터마크 */}
+        {/* xTalk Wallet 워터마크 */}
         <div className="watermark">
-          <span>D'Cent Wallet</span>
+          <span>xTalk Wallet</span>
         </div>
       </main>
 

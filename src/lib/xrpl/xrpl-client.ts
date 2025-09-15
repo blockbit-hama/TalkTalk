@@ -97,7 +97,13 @@ class XRPLClient {
 
     if (!this.client) return null;
 
+    // WebSocket 연결이 완료될 때까지 대기
+    if (!this.client.isConnected()) {
+      await this.client.connect();
+    }
+
     try {
+      console.log('🔍 XRPL 계정 정보 요청:', address);
       const accountInfo = await this.client.request({
         command: 'account_info',
         account: address,
@@ -123,6 +129,11 @@ class XRPLClient {
     }
 
     if (!this.client) return [];
+
+    // WebSocket 연결이 완료될 때까지 대기
+    if (!this.client.isConnected()) {
+      await this.client.connect();
+    }
 
     try {
       const accountLines = await this.client.request({

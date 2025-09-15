@@ -28,19 +28,24 @@ export const useWalletList = () => {
     try {
       setIsLoading(true);
       const wallets = getWalletsFromStorage();
+      console.log('🔍 지갑 목록 로드:', wallets.length, '개');
       setWalletList(wallets);
-      
+
       if (wallets.length > 0) {
         // 저장된 선택된 지갑이 있으면 복원
         const savedSelectedWalletId = localStorage.getItem('selectedWalletId');
         
         if (savedSelectedWalletId && wallets.find(w => w.id === savedSelectedWalletId)) {
           // 저장된 지갑이 존재하면 선택
+          console.log('✅ 저장된 지갑 선택:', savedSelectedWalletId);
           setSelectedWalletId(savedSelectedWalletId);
         } else {
           // 저장된 지갑이 없거나 존재하지 않으면 첫 번째 지갑 선택
+          console.log('✅ 첫 번째 지갑 자동 선택:', wallets[0].id);
           setSelectedWalletIdWithStorage(wallets[0].id);
         }
+      } else {
+        console.log('⚠️ 지갑이 없습니다. 지갑을 생성해주세요.');
       }
     } catch (error) {
       console.error('지갑 목록 로드 실패:', error);
@@ -49,13 +54,11 @@ export const useWalletList = () => {
     }
   };
 
-  // 초기 로딩 시 로컬 스토리지에서 선택된 지갑 복원
+  // 초기 로딩 시 지갑 목록 자동 로드
   useEffect(() => {
-    if (typeof window !== 'undefined' && !selectedWalletId) {
-      const savedSelectedWalletId = localStorage.getItem('selectedWalletId');
-      if (savedSelectedWalletId) {
-        setSelectedWalletId(savedSelectedWalletId);
-      }
+    if (typeof window !== 'undefined') {
+      console.log('🚀 useWalletList 초기화 시작');
+      loadWallets();
     }
   }, []);
 

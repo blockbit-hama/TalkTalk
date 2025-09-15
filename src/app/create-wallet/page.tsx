@@ -18,11 +18,48 @@ export default function CreateWalletPage() {
   const { refreshWalletList } = useWalletList();
   const { updateEnabledAssets } = useEnabledAssets();
 
+  // 기존 지갑 삭제 확인
+  const checkExistingWallet = () => {
+    const existingWallets = JSON.parse(localStorage.getItem('hdWallets') || '[]');
+    return existingWallets.length > 0;
+  };
+
+  // 기존 지갑 삭제
+  const deleteExistingWallets = () => {
+    // 모든 지갑 관련 데이터 삭제
+    localStorage.removeItem('hdWallets');
+    localStorage.removeItem('selectedWalletId');
+    localStorage.removeItem('enabledAssets');
+    localStorage.removeItem('friends');
+    localStorage.removeItem('chatMessages');
+    localStorage.removeItem('serverRegistrations');
+
+    console.log('기존 지갑 및 관련 데이터 모두 삭제 완료');
+  };
+
   // 지갑 생성
   const handleCreateWallet = async () => {
     if (!walletName.trim()) {
       setError('지갑 이름을 입력해주세요.');
       return;
+    }
+
+    // 기존 지갑이 있는지 확인
+    if (checkExistingWallet()) {
+      const confirmDelete = confirm(
+        '🚨 기존 지갑이 존재합니다.\n\n' +
+        'xTalk-Wallet은 하나의 지갑만 유지할 수 있습니다.\n' +
+        '새 지갑을 생성하면 기존 지갑과 모든 데이터가 영구 삭제됩니다.\n\n' +
+        '⚠️ 이 작업은 되돌릴 수 없습니다.\n\n' +
+        '계속하시겠습니까?'
+      );
+
+      if (!confirmDelete) {
+        return;
+      }
+
+      // 기존 지갑 삭제
+      deleteExistingWallets();
     }
 
     setIsCreating(true);
@@ -55,10 +92,28 @@ export default function CreateWalletPage() {
     try {
       // 지갑을 로컬 스토리지에 저장
       saveWalletToStorage(walletInfo);
-      
-      // 기본 자산 활성화 (BTC, ETH)
-      updateEnabledAssets(['BTC', 'ETH']);
-      console.log('새 지갑 생성 시 기본 자산 활성화: BTC, ETH');
+
+      // XRPL 기본 자산 활성화 (XRP만)
+      updateEnabledAssets(['XRP']);
+      console.log('새 지갑 생성 시 기본 자산 활성화: XRP');
+
+      // 서버에 지갑 자동 등록
+      try {
+        const { registerWalletToServer } = await import('../../lib/api/server-registration');
+        const registrationResult = await registerWalletToServer(
+          walletInfo.id,
+          walletInfo.name,
+          walletInfo.addresses.XRP || ''
+        );
+
+        if (registrationResult.success) {
+          console.log('지갑 서버 등록 성공:', registrationResult.accountId);
+        } else {
+          console.warn('지갑 서버 등록 실패:', registrationResult.error);
+        }
+      } catch (error) {
+        console.error('지갑 서버 등록 중 오류:', error);
+      }
       
       // atoms 업데이트
       refreshWalletList();
@@ -137,9 +192,20 @@ export default function CreateWalletPage() {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-white mb-2">새 지갑 생성</h2>
               <p className="text-gray-400">
-                새로운 HD 지갑을 생성하여 다양한 가상자산을 관리하세요.
+                XRPL 기반 소셜 지갑을 생성하여 친구들과 자산을 주고받으세요.
               </p>
             </div>
+
+            {checkExistingWallet() && (
+              <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-xl">
+                <div className="flex items-start space-x-3">
+                  <div className="text-red-400 text-xl">🚨</div>
+                  <div className="text-red-400 text-sm">
+                    <strong>주의:</strong> 기존 지갑이 존재합니다. 새 지갑 생성 시 기존 지갑과 모든 데이터가 영구 삭제됩니다.
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="space-y-4">
               <label className="block text-white font-semibold">지갑 이름</label>
@@ -159,7 +225,10 @@ export default function CreateWalletPage() {
               <div className="flex items-start space-x-3">
                 <div className="text-[#F2A003] text-xl">ℹ️</div>
                 <div className="text-[#F2A003] text-sm">
-                  <strong>HD 지갑:</strong> 하나의 니모닉으로 여러 가상자산의 주소를 생성할 수 있습니다.
+                  <strong>xTalk-Wallet 특징:</strong><br />
+                  • XRPL 네이티브 지갑 (XRP + XRPL 토큰)<br />
+                  • 친구 전송 + 채팅 통합<br />
+                  • 하나의 지갑만 유지 (보안과 단순성)
                 </div>
               </div>
             </div>

@@ -1,113 +1,109 @@
-'use client';
-
-import React, { useEffect, useRef } from 'react';
-import { useAtom } from 'jotai';
-import { 
-  currentChatRoomAtom, 
-  currentRoomMessagesAtom, 
-  currentUserAtom,
-  markMessagesAsReadAtom 
-} from '@/store/chatAtoms';
-import { MessageList } from './MessageList';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { MessageInput } from './MessageInput';
+import { MessageList } from './MessageList';
 import { ChatHeader } from './ChatHeader';
+
+interface Message {
+  id: string;
+  roomId: string;
+  senderId: string;
+  type: 'text' | 'xrp_transfer' | 'token_transfer' | 'image' | 'system';
+  content: string;
+  metadata?: {
+    amount?: string;
+    currency?: string;
+    transactionHash?: string;
+    imageUrl?: string;
+    tokenId?: string;
+    tokenAmount?: string;
+  };
+  timestamp: Date;
+  isRead: boolean;
+  sender: {
+    id: string;
+    name: string;
+    isOnline: boolean;
+  };
+}
 
 interface ChatRoomProps {
   roomId: string;
+  friendName?: string;
 }
 
-export const ChatRoom: React.FC<ChatRoomProps> = ({ roomId }) => {
-  const [currentRoom, setCurrentRoom] = useAtom(currentChatRoomAtom);
-  const [messages, setMessages] = useAtom(currentRoomMessagesAtom);
-  const [currentUser] = useAtom(currentUserAtom);
-  const [, markMessagesAsRead] = useAtom(markMessagesAsReadAtom);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+export function ChatRoom({ roomId, friendName }: ChatRoomProps) {
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentUserId] = useState('current_user');
 
   useEffect(() => {
-    // Load room data and messages
-    // This would typically call the API
-    const room = {
-      id: roomId,
-      name: 'Alice & Bob',
-      type: 'direct' as const,
-      participants: ['user1', 'user2'],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    loadMessages();
     
-    const roomMessages = [
-      {
-        id: 'msg1',
-        roomId: roomId,
-        senderId: 'user1',
-        type: 'text' as const,
-        content: '안녕하세요! XRP를 보내드릴게요.',
-        timestamp: new Date(Date.now() - 300000),
-        isRead: true,
-        sender: { id: 'user1', name: 'Alice', isOnline: true },
-      },
-      {
-        id: 'msg2',
-        roomId: roomId,
-        senderId: 'user2',
-        type: 'text' as const,
-        content: '감사합니다! 받았어요.',
-        timestamp: new Date(Date.now() - 180000),
-        isRead: true,
-        sender: { id: 'user2', name: 'Bob', isOnline: true },
-      },
-      {
-        id: 'msg3',
-        roomId: roomId,
-        senderId: 'user1',
-        type: 'xrp_transfer' as const,
-        content: 'XRP 전송',
-        metadata: {
-          amount: '10',
-          currency: 'XRP',
-          transactionHash: 'tx1234567890abcdef',
-        },
-        timestamp: new Date(Date.now() - 120000),
-        isRead: false,
-        sender: { id: 'user1', name: 'Alice', isOnline: true },
-      },
-    ];
+    // 채팅 메시지 추가 이벤트 리스너
+    const handleMessageAdded = (event: CustomEvent) => {
+      const newMessage = event.detail;
+      if (newMessage.roomId === roomId) {
+        setMessages(prev => [...prev, newMessage]);
+      }
+    };
 
-    setCurrentRoom(room);
-    setMessages(roomMessages);
-  }, [roomId, setCurrentRoom, setMessages]);
+    window.addEventListener('chatMessageAdded', handleMessageAdded as EventListener);
+    return () => {
+      window.removeEventListener('chatMessageAdded', handleMessageAdded as EventListener);
+    };
+  }, [roomId]);
 
-  useEffect(() => {
-    // Mark messages as read when room changes
-    if (currentRoom && currentUser) {
-      markMessagesAsRead(currentRoom.id);
+  const loadMessages = () => {
+    const savedMessages = localStorage.getItem('chatMessages');
+    if (savedMessages) {
+      try {
+        const allMessages = JSON.parse(savedMessages);
+        const roomMessages = allMessages[roomId] || [];
+        setMessages(roomMessages);
+      } catch (error) {
+        console.error('메시지 로드 실패:', error);
+      }
     }
-  }, [currentRoom, currentUser, markMessagesAsRead]);
+  };
 
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const handleSendMessage = async (content: string, type: 'text' | 'xrp_transfer' | 'token_transfer' = 'text', metadata?: any) => {
+    const newMessage: Message = {
+      id: `msg_${Date.now()}`,
+      roomId,
+      senderId: currentUserId,
+      type,
+      content,
+      metadata,
+      timestamp: new Date(),
+      isRead: false,
+      sender: {
+        id: currentUserId,
+        name: '나',
+        isOnline: true
+      }
+    };
 
-  if (!currentRoom || !currentUser) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">채팅방을 불러오는 중...</div>
-      </div>
-    );
-  }
+    // localStorage에 메시지 저장
+    const savedMessages = localStorage.getItem('chatMessages');
+    const allMessages = savedMessages ? JSON.parse(savedMessages) : {};
+    const roomMessages = allMessages[roomId] || [];
+    roomMessages.push(newMessage);
+    allMessages[roomId] = roomMessages;
+    localStorage.setItem('chatMessages', JSON.stringify(allMessages));
+
+    // 상태 업데이트
+    setMessages(prev => [...prev, newMessage]);
+
+    // 메시지 추가 이벤트 발생
+    window.dispatchEvent(new CustomEvent('chatMessageAdded', { detail: newMessage }));
+  };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <ChatHeader room={currentRoom} />
-      
-      <div className="flex-1 overflow-hidden">
-        <MessageList messages={messages} currentUserId={currentUser.id} />
-        <div ref={messagesEndRef} />
-      </div>
-      
-      <MessageInput roomId={roomId} />
+    <div className="h-full flex flex-col bg-gray-50">
+      <ChatHeader roomId={roomId} friendName={friendName} />
+      <MessageList messages={messages} currentUserId={currentUserId} />
+      <MessageInput onSendMessage={handleSendMessage} />
     </div>
   );
-};
+}
