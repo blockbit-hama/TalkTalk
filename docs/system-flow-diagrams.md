@@ -851,4 +851,101 @@ sequenceDiagram
 
 ---
 
+## 🔧 **v1.2 토큰 디스플레이 완전 해결**
+
+### useWallet 훅 안정화 흐름
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant UI as Frontend UI
+    participant UW as useWallet Hook
+    participant WA as Wallet Atoms
+    participant AC as ASSET_CONSTANTS
+    parameter LS as LocalStorage
+    participant EA as enabledAssets Atom
+
+    U->>UI: 앱 접속
+    UI->>UW: useWallet() 훅 초기화
+    UW->>UW: console.log('🔧 useWallet hook 초기화 시작')
+
+    UW->>WA: useAtom(walletAtom)
+    UW->>WA: useAtom(walletLoadingAtom)
+    UW->>EA: useAtom(enabledAssetsAtom)
+
+    UW->>UW: 현재 상태 로깅
+    UW->>UW: enabledAssets.length 확인
+
+    alt enabledAssets가 비어있는 경우
+        UW->>UW: console.log('⚡ enabledAssets 비어있음')
+        UW->>AC: DEFAULT_ENABLED_ASSETS 조회
+        AC-->>UW: ['XRP', 'USD', 'CNY', 'TST'] 반환
+        UW->>EA: setEnabledAssets(기본값)
+        UW->>UW: console.log('⚡ 설정 완료')
+    else enabledAssets가 있는 경우
+        UW->>UW: console.log('✅ 기존 enabledAssets 유지')
+    end
+
+    UW->>UW: getBrowserWalletId() 실행
+    UW->>UW: loadWallet() 실행
+    UW->>UW: loadEnabledAssets() 실행
+
+    Note over U,EA: v1.2 안정화: enabledAssets 즉시 초기화로<br/>모든 토큰이 기본적으로 표시
+```
+
+### 브라우저별 토큰 주소 마이그레이션 흐름
+
+```mermaid
+sequenceDiagram
+    participant UW as useWallet Hook
+    participant LS as LocalStorage
+    participant WK as Wallet Key
+    participant TA as Token Addresses
+
+    UW->>UW: loadWallet() 실행
+    UW->>UW: getBrowserWalletId() 호출
+    UW->>LS: 브라우저별 지갑 데이터 조회
+
+    alt 기존 지갑 발견
+        LS-->>UW: 기존 지갑 데이터 반환
+        UW->>UW: 토큰 주소 존재 여부 확인
+
+        alt 토큰 주소가 불완전한 경우
+            UW->>UW: console.log('🔄 토큰 주소 추가 중...')
+            UW->>TA: XRP 주소를 모든 토큰에 복사
+
+            Note over UW,TA: addresses.USD = addresses.XRP<br/>addresses.CNY = addresses.XRP<br/>addresses.EUR = addresses.XRP<br/>addresses.TST = addresses.XRP
+
+            UW->>TA: privateKeys 및 publicKeys 복사
+            UW->>LS: 업데이트된 지갑 저장
+            UW->>UW: console.log('✅ 토큰 주소 추가 완료')
+        end
+    else 지갑 없음
+        UW->>UW: 새 브라우저별 지갑 생성
+        UW->>TA: 모든 토큰에 동일한 XRPL 주소 설정
+    end
+
+    Note over UW,TA: v1.2 개선: 모든 XRPL 토큰이<br/>동일한 주소를 사용하도록 자동 마이그레이션
+```
+
+### 주요 개선사항
+
+#### **1. useWallet 훅 안정화**
+- **즉시 초기화**: enabledAssets가 비어있으면 즉시 기본값으로 설정
+- **로깅 강화**: 모든 단계에서 상세한 디버깅 로그 제공
+- **중복 로직 제거**: 불필요한 중복 체크 로직 정리
+
+#### **2. 토큰 주소 자동 마이그레이션**
+- **기존 지갑 호환**: 기존 XRP 전용 지갑을 토큰 지원 지갑으로 자동 업그레이드
+- **주소 통합**: 모든 XRPL 토큰이 동일한 주소 사용
+- **데이터 보존**: 기존 지갑 데이터와 잔액 정보 완전 보존
+
+#### **3. 컴파일 오류 완전 해결**
+- **Import 경로 수정**: 모든 import 경로 정규화
+- **변수명 통일**: walletLoading 관련 변수명 일관성 유지
+- **JSX 문법 수정**: 모든 JSX 문법 오류 수정
+
+---
+
 **🚀 v1.1 실제 AMM 연동으로 시스템 완전 업그레이드 완료!**
+**✨ v1.2 토큰 디스플레이 완전 해결로 사용자 경험 최적화 완료!**
