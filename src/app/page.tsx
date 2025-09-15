@@ -121,6 +121,7 @@ const SwapIcon = ({ size = 32, color = '#F2A003' }) => (
 
 export default function Home() {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [walletSelectOpen, setWalletSelectOpen] = useState(false);
   const [balanceType, setBalanceType] = useState<'잔액' | 'NFT'>('잔액');
   const balanceOptions = ['잔액', 'NFT'] as const;
   
@@ -512,6 +513,7 @@ export default function Home() {
   };
 
   const profileRef = useRef<HTMLDivElement>(null);
+  const walletSelectRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -519,20 +521,78 @@ export default function Home() {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
       }
+      if (walletSelectRef.current && !walletSelectRef.current.contains(e.target as Node)) {
+        setWalletSelectOpen(false);
+      }
     };
-    if (profileOpen) document.addEventListener('mousedown', handleClick);
+    if (profileOpen || walletSelectOpen) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [profileOpen]);
+  }, [profileOpen, walletSelectOpen]);
 
   return (
     <div className="min-h-screen w-full flex flex-col relative font-inherit">
       {/* 탑바 */}
       <nav className="top-bar">
         <div className="top-bar-inner">
-          {/* xTalk Wallet 제품명 */}
+          {/* 지갑 선택 콤보박스 */}
           <div className="wallet-select-container">
-            <div className="px-7 py-5">
-              <span className="text-2xl font-bold text-white">xTalk Wallet</span>
+            <div className="relative" ref={walletSelectRef}>
+              <button
+                className="select-button py-5 px-7 text-left text-2xl font-bold text-white bg-transparent border-none"
+                onClick={() => setWalletSelectOpen(!walletSelectOpen)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  paddingRight: '56px',
+                  width: '260px',
+                  textAlign: 'left'
+                }}
+              >
+                {selectedWallet?.name || 'xTalk Wallet'}
+                <span
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white font-bold text-lg"
+                  style={{ transform: walletSelectOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }}
+                >
+                  ▼
+                </span>
+              </button>
+
+              {walletSelectOpen && (
+                <div className="dropdown-menu" style={{ top: 'calc(100% + 8px)' }}>
+                  {/* 현재 지갑 표시 */}
+                  {selectedWallet && (
+                    <div
+                      className="dropdown-option selected"
+                      onClick={() => {
+                        setWalletSelectOpen(false);
+                      }}
+                    >
+                      {selectedWallet.name}
+                      <div style={{
+                        fontSize: '14px',
+                        color: '#A0A0B0',
+                        marginTop: '4px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {selectedWallet.addresses.XRP?.slice(0, 8)}...{selectedWallet.addresses.XRP?.slice(-6)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 새 지갑 생성 */}
+                  <div
+                    className="dropdown-option"
+                    onClick={() => {
+                      setWalletSelectOpen(false);
+                      router.push('/create-wallet');
+                    }}
+                    style={{ borderTop: '1px solid #333', marginTop: '4px' }}
+                  >
+                    <span style={{ fontSize: '18px', marginRight: '8px' }}>+</span>
+                    새 지갑 생성
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           {/* QR 코드 스캔 버튼 */}

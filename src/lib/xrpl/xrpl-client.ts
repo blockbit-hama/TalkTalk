@@ -117,8 +117,13 @@ class XRPLClient {
       };
 
       return account;
-    } catch (error) {
-      console.error('Failed to get account info:', error);
+    } catch (error: any) {
+      // "Account not found" 에러는 새 계정의 정상적인 상태
+      if (error.message && error.message.includes('Account not found')) {
+        console.log(`💡 새 계정 감지: ${address} (Faucet으로 XRP를 충전해야 합니다)`);
+      } else {
+        console.error('XRPL 계정 정보 조회 실패:', error);
+      }
       return null;
     }
   }
@@ -148,8 +153,13 @@ class XRPLClient {
       }));
 
       return tokens;
-    } catch (error) {
-      console.error('Failed to get account tokens:', error);
+    } catch (error: any) {
+      // "Account not found" 에러는 새 계정의 정상적인 상태
+      if (error.message && error.message.includes('Account not found')) {
+        console.log(`💡 새 계정 토큰 조회: ${address} (아직 Trust Line이 없습니다)`);
+      } else {
+        console.error('XRPL 토큰 정보 조회 실패:', error);
+      }
       return [];
     }
   }

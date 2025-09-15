@@ -234,23 +234,33 @@ export const recoverWalletFromMnemonic = async (
  * XRP 주소 생성 (XRP Ledger) - 실제 XRPL Devnet에서 작동하는 주소 사용
  */
 const generateXRPAddress = (privateKey: Buffer): string => {
-  // 현재는 실제 XRPL Devnet Faucet에서 생성 가능한 테스트 주소 사용
-  // 추후 실제 개인키 기반 생성으로 업그레이드 예정
+  try {
+    // XRPL 라이브러리를 사용해 실제 새 지갑 생성
+    const { Wallet } = require('xrpl');
 
-  // 개인키를 기반으로 서로 다른 테스트 주소 선택 (deterministic)
-  const keyHash = createHash('sha256').update(privateKey).digest();
-  const addressIndex = keyHash[0] % 3; // 0, 1, 2 중 선택
+    // 매번 완전히 새로운 지갑 생성 (잔액 0인 새 주소)
+    const wallet = Wallet.generate();
 
-  const testAddresses = [
-    'rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH', // 테스트 주소 1
-    'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh', // 테스트 주소 2
-    'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe'  // 테스트 주소 3
-  ];
+    console.log(`🔑 새 XRPL 빈 주소 생성:`, wallet.address);
+    console.log(`💡 Faucet으로 XRP를 충전해야 합니다.`);
 
-  const selectedAddress = testAddresses[addressIndex];
-  console.log(`🔑 XRPL 테스트 주소 선택 (인덱스 ${addressIndex}):`, selectedAddress);
+    return wallet.address;
+  } catch (error) {
+    console.error('XRPL 주소 생성 실패:', error);
 
-  return selectedAddress;
+    // 폴백: 결정론적 빈 주소 생성 (개인키 기반)
+    const keyHash = createHash('sha256').update(privateKey).digest();
+    const addressIndex = keyHash[0] % 1000; // 많은 조합으로 고유성 보장
+
+    // Base58 형태로 결정론적 주소 생성 (XRPL 주소 형식)
+    const addressSuffix = keyHash.slice(0, 20).toString('hex');
+    const fakeAddress = `r${addressSuffix}${Array(14 - addressSuffix.length).fill('0').join('')}`;
+
+    console.log(`🔑 폴백: 결정론적 빈 주소 생성:`, fakeAddress);
+    console.log(`💡 실제로는 작동하지 않을 수 있습니다. xrpl 라이브러리 설치를 확인하세요.`);
+
+    return fakeAddress;
+  }
 };
 
 /**
@@ -369,6 +379,24 @@ export const deleteWallet = (id: string): void => {
   } catch (error) {
     console.error('지갑 삭제 실패:', error);
     throw new Error('지갑 삭제에 실패했습니다.');
+  }
+};
+
+/**
+ * 모든 지갑 데이터 정리 (기존 잔액이 있는 테스트 주소 정리용)
+ */
+export const clearAllWalletData = (): void => {
+  try {
+    console.log('🧹 기존 지갑 데이터 정리 중...');
+
+    // 모든 지갑 관련 localStorage 데이터 삭제
+    localStorage.removeItem('hdWallets');
+    localStorage.removeItem('enabledAssets');
+    localStorage.removeItem('selectedWalletId');
+
+    console.log('✅ 지갑 데이터 정리 완료');
+  } catch (error) {
+    console.error('지갑 데이터 정리 실패:', error);
   }
 };
 
@@ -771,42 +799,26 @@ const generateSolanaAddress = (privateKey: Buffer): { address: string; privateKe
 // 지정된 니모닉으로 test-wallet 생성 및 필요한 자산들 추가
 export const createTestWalletIfNotExists = async (): Promise<boolean> => {
   try {
-    const wallets = getWalletsFromStorage();
-    
-    // test-wallet이 이미 존재하는지 확인 (개발 중 항상 재생성)
-    const existingTestWallet = wallets.find(w => w.name === 'test-wallet');
-    if (existingTestWallet) {
-      console.log('기존 test-wallet을 삭제하고 새로 생성합니다.');
-      // 기존 test-wallet 삭제
-      const updatedWallets = wallets.filter(w => w.name !== 'test-wallet');
-      localStorage.setItem('hdWallets', JSON.stringify(updatedWallets));
-      // 활성화된 자산도 클리어
-      localStorage.removeItem('enabledAssets');
-      localStorage.removeItem('selectedWalletId');
-    }
-    
-    console.log('=== test-wallet 생성 시작 ===');
+    // 모든 기존 데이터를 정리하고 새로 시작
+    clearAllWalletData();
 
-    // 지정된 니모닉
-    const testMnemonic = 'tuna evil senior ginger clog autumn come update marble wife body east fly struggle badge someone pupil allow zero yellow slush fury labor battle';
-    
-    // 니모닉 유효성 검사
-    if (!validateMnemonic(testMnemonic)) {
-      console.error('지정된 니모닉이 유효하지 않습니다.');
-      return false;
-    }
+    console.log('=== 새로운 빈 지갑 생성 시작 ===');
 
-    // test-wallet 생성
-    console.log('니모닉으로 test-wallet 생성 중...');
-    const testWallet = await recoverWalletFromMnemonic(testMnemonic, 'test-wallet');
-    console.log('test-wallet 생성 완료, 기본 주소들:', testWallet.addresses);
-    
-    // test-wallet을 첫 번째 지갑으로 저장 (XRPL 기본 토큰들만 사용)
-    const updatedWallets = [testWallet, ...wallets];
-    localStorage.setItem('hdWallets', JSON.stringify(updatedWallets));
+    // 완전히 새로운 니모닉으로 지갑 생성 (매번 다른 주소 생성)
+    const newWallet = await createHDWallet({
+      name: 'xTalk-Wallet',
+      // mnemonic을 제공하지 않으면 새로운 니모닉이 생성됨
+    });
 
-    // test-wallet을 선택된 지갑으로 설정
-    localStorage.setItem('selectedWalletId', testWallet.id);
+    console.log('✅ 새로운 빈 지갑 생성 완료');
+    console.log('📍 XRP 주소:', newWallet.addresses.XRP);
+    console.log('💡 Faucet에서 XRP를 충전해야 합니다!');
+
+    // 새 지갑을 유일한 지갑으로 저장
+    localStorage.setItem('hdWallets', JSON.stringify([newWallet]));
+
+    // 새 지갑을 선택된 지갑으로 설정
+    localStorage.setItem('selectedWalletId', newWallet.id);
 
     // XRPL 기본 토큰들만 활성화 (XRP, USD, CNY, EUR)
     const defaultEnabledAssets = [
@@ -816,8 +828,8 @@ export const createTestWalletIfNotExists = async (): Promise<boolean> => {
       { symbol: 'EUR', name: 'Devnet EUR', price: '€0.92', change: '0.00%', changeColor: '#6FCF97', issuer: 'rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj' }
     ];
     localStorage.setItem('enabledAssets', JSON.stringify(defaultEnabledAssets));
-    
-    console.log('test-wallet 생성 완료:', testWallet);
+
+    console.log('새 지갑 설정 완료:', newWallet);
     return true;
     
   } catch (error) {
