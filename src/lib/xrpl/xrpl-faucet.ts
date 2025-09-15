@@ -53,8 +53,10 @@ export class XRPLFaucet {
     } catch (error) {
       console.error('Devnet Faucet 오류:', error);
 
-      // Faucet 실패 시 Mock 응답
-      return this.getMockFaucetResponse(address);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Devnet Faucet 요청 실패'
+      };
     }
   }
 
@@ -96,27 +98,13 @@ export class XRPLFaucet {
     } catch (error) {
       console.error('Testnet Faucet 오류:', error);
 
-      // Faucet 실패 시 Mock 응답
-      return this.getMockFaucetResponse(address);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Testnet Faucet 요청 실패'
+      };
     }
   }
 
-  /**
-   * Mock Faucet 응답 (실제 Faucet이 실패할 경우)
-   */
-  private getMockFaucetResponse(address: string): FaucetResult {
-    console.log('Mock Faucet 응답 생성:', address);
-
-    return {
-      success: true,
-      account: {
-        classicAddress: address,
-        xAddress: '',
-        secret: ''
-      },
-      balance: '1000000000' // 1000 XRP in drops
-    };
-  }
 
   /**
    * 네트워크에 따른 Faucet 요청

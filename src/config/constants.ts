@@ -31,7 +31,7 @@ export const WALLET_CONSTANTS = {
 
 // 가상자산 상수
 export const ASSET_CONSTANTS = {
-  DEFAULT_ENABLED_ASSETS: ['BTC', 'ETH', 'SOL'],
+  DEFAULT_ENABLED_ASSETS: ['XRP', 'USD', 'CNY', 'TST'],
   STORAGE_KEY: 'enabledAssets'
 } as const;
 

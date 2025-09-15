@@ -5,8 +5,8 @@ class XRPLClient {
   private client: Client | null = null;
   private wallet: Wallet | null = null;
   private networkInfo: XRPLNetworkInfo = {
-    network: 'testnet',
-    server: 'wss://s.altnet.rippletest.net:51233',
+    network: 'devnet',
+    server: 'wss://s.devnet.rippletest.net:51233',
     fee: '0.000012',
     reserve: '10',
   };

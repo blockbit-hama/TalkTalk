@@ -372,4 +372,44 @@
   .dropdown-option:hover {
     background: #2A2B30;
   }
+
+  /* 모달 애니메이션 */
+  @keyframes slideInUp {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* 커스텀 모달 스타일 */
+  .custom-modal-overlay {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .custom-modal-content {
+    animation: slideInUp 0.3s ease-out;
+  }
+
+  /* 모바일 터치 최적화 */
+  @media (max-width: 768px) {
+    .custom-modal-content {
+      transform: translateY(0);
+      margin: 20px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+  }
 }

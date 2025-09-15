@@ -133,7 +133,7 @@ export default function Home() {
   // 새로운 atoms hooks 사용
   const {
     wallet: selectedWallet,
-    isLoading: isWalletListLoading,
+    isLoading: isWalletLoading,
     enabledAssets,
     loadWallet,
     refreshWallet,
@@ -144,14 +144,6 @@ export default function Home() {
   const xrpBalance = useWalletBalance(
     selectedWallet?.addresses.XRP || '', 
     'XRP'
-  );
-  const mock1Balance = useWalletBalance(
-    selectedWallet?.addresses.MOCK1 || '', 
-    'MOCK1'
-  );
-  const mock2Balance = useWalletBalance(
-    selectedWallet?.addresses.MOCK2 || '', 
-    'MOCK2'
   );
 
   // 잔액 데이터 캐시 무효화 함수
@@ -172,15 +164,6 @@ export default function Home() {
       total += xrpValue;
     }
     
-    if (enabledAssets.includes('MOCK1') && mock1Balance.data) {
-      const mock1Value = parseFloat(mock1Balance.data.usdValue.replace('$', '').replace(',', ''));
-      total += mock1Value;
-    }
-    
-    if (enabledAssets.includes('MOCK2') && mock2Balance.data) {
-      const mock2Value = parseFloat(mock2Balance.data.usdValue.replace('$', '').replace(',', ''));
-      total += mock2Value;
-    }
     
     return total;
   };
@@ -275,7 +258,7 @@ export default function Home() {
       name: selectedWallet.name,
       addresses: selectedWallet.addresses
     } : null,
-    isWalletLoading: isWalletListLoading
+    isWalletLoading: isWalletLoading
   });
 
   // localStorage 상세 디버깅
@@ -403,7 +386,7 @@ export default function Home() {
       console.log('모든 주소들:', selectedWallet.addresses);
       
       // XRPL 자산 상태 확인
-      const xrplAssets = ['XRP', 'MOCK1', 'MOCK2'];
+      const xrplAssets = ['XRP'];
       xrplAssets.forEach(symbol => {
         console.log(`${symbol} 주소:`, selectedWallet.addresses[symbol]);
         console.log(`${symbol} 활성화됨:`, enabledAssets.includes(symbol));
@@ -411,10 +394,8 @@ export default function Home() {
       
       // 잔액 데이터 디버깅
       console.log('XRP 잔액 데이터:', xrpBalance.data);
-      console.log('MOCK1 잔액 데이터:', mock1Balance.data);
-      console.log('MOCK2 잔액 데이터:', mock2Balance.data);
     }
-      }, [selectedWallet, enabledAssets, xrpBalance.data, mock1Balance.data, mock2Balance.data]);
+      }, [selectedWallet, enabledAssets, xrpBalance.data]);
 
   // assetsUpdated 이벤트 수신
   useEffect(() => {
@@ -746,10 +727,32 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {selectedWallet.addresses.TST && enabledAssets.includes('TST') && (
+                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
+                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                    T
+                  </div>
+                  <div className="balance-card-inner">
+                    <span className="balance-card-name">Devnet Test Token</span>
+                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
+                      $0.10 0.00%
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end ml-auto">
+                    <span className="balance-card-amount">
+                      0.000000
+                    </span>
+                    <span className="balance-card-sub-usd">
+                      $0.00
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           )}
           
-          {!selectedWallet && !isWalletListLoading && (
+          {!selectedWallet && !isWalletLoading && (
             <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
               <div className="balance-card-inner">
                 <span className="balance-card-name">지갑이 없습니다</span>

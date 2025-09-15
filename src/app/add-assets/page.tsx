@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useEnabledAssets } from "../../hooks/useWalletAtoms";
-import { useWallet } from "../../hooks/wallet/useWallet";
+import { useWallet } from "../../hooks/useWallet";
 import { getCryptoPrices, getChangeColor, formatPrice, formatChangePercentage } from "../../lib/api/crypto-price";
 import { getWalletById, getNextAccountPath, getNextEthAddressPath, createCustomDerivationPath } from "../../lib/wallet-utils";
 import { Button, Input, Card } from "../../components/ui";
@@ -51,18 +51,18 @@ export default function AddAssetsPage() {
   const { updateEnabledAssets, loadEnabledAssets } = useEnabledAssets();
   const { generateNewAssetKey } = useWallet();
 
-  // XRPL 전용 자산 목록
+  // XRPL Devnet 실제 자산 목록
   const supportedAssets = [
-    { id: "xrp", symbol: "XRP", name: "XRP", icon: "X", networkType: "XRPL Mainnet" },
-    { id: "mock-usd", symbol: "USD", name: "Mock USD", icon: "$", networkType: "XRPL Token", requiresTrustLine: true },
-    { id: "mock-eur", symbol: "EUR", name: "Mock EUR", icon: "€", networkType: "XRPL Token", requiresTrustLine: true },
-    { id: "mock-jpy", symbol: "JPY", name: "Mock JPY", icon: "¥", networkType: "XRPL Token", requiresTrustLine: true },
-    { id: "mock-krw", symbol: "KRW", name: "Mock KRW", icon: "₩", networkType: "XRPL Token", requiresTrustLine: true },
+    { id: "xrp", symbol: "XRP", name: "XRP", icon: "X", networkType: "XRPL Devnet", issuer: null },
+    { id: "devnet-usd", symbol: "USD", name: "Devnet USD", icon: "$", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rJgqyVQrzRQTQREVTYK21843LR7vb7LapX" },
+    { id: "devnet-cny", symbol: "CNY", name: "Devnet CNY", icon: "¥", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x" },
+    { id: "devnet-eur", symbol: "EUR", name: "Devnet EUR", icon: "€", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj" },
+    { id: "devnet-tst", symbol: "TST", name: "Devnet Test Token", icon: "T", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
   ];
 
   // XRPL 자산 가격 정보 로드
   const loadAssetPrices = async () => {
-    // XRP 가격만 조회하고 Mock 토큰은 고정 가격 사용
+    // XRP 가격만 조회하고 Devnet 토큰은 고정 가격 사용
     const cryptoPrices = await getCryptoPrices(['XRP']);
 
     // 가격 정보를 assets 배열에 매핑
@@ -77,14 +77,14 @@ export default function AddAssetsPage() {
         change = priceData ? formatChangePercentage(priceData.priceChangePercentage24h) : '0.00%';
         changeColor = priceData ? getChangeColor(priceData.priceChangePercentage24h) : '#A0A0B0';
       } else {
-        // Mock 토큰들은 고정 가격
-        const mockPrices: { [key: string]: string } = {
+        // Devnet 토큰들은 고정 가격
+        const devnetPrices: { [key: string]: string } = {
           'USD': '$1.00',
           'EUR': '$1.10',
-          'JPY': '$0.0067',
-          'KRW': '$0.00077',
+          'CNY': '$0.14',
+          'TST': '$0.10',
         };
-        price = mockPrices[asset.symbol] || '$1.00';
+        price = devnetPrices[asset.symbol] || '$1.00';
         change = '0.00%';
         changeColor = '#6FCF97';
       }

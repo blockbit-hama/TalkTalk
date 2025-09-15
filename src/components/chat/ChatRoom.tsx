@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { ChatHeader } from './ChatHeader';
+import { useWallet } from '../../hooks/useWallet';
 
 interface Message {
   id: string;
@@ -35,75 +36,95 @@ interface ChatRoomProps {
 export function ChatRoom({ roomId, friendName }: ChatRoomProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentUserId] = useState('current_user');
+  const [currentUserId] = useState(`user_${Math.random().toString(36).substr(2, 9)}`);
+  const [isLoading, setIsLoading] = useState(false);
+  const [recipientAddress, setRecipientAddress] = useState<string>();
+  const { wallet } = useWallet();
 
   useEffect(() => {
     loadMessages();
-    
-    // 채팅 메시지 추가 이벤트 리스너
-    const handleMessageAdded = (event: CustomEvent) => {
-      const newMessage = event.detail;
-      if (newMessage.roomId === roomId) {
-        setMessages(prev => [...prev, newMessage]);
-      }
-    };
 
-    window.addEventListener('chatMessageAdded', handleMessageAdded as EventListener);
+    // 폴링으로 메시지 동기화 (2초마다)
+    const pollInterval = setInterval(() => {
+      loadMessages();
+    }, 2000);
+
     return () => {
-      window.removeEventListener('chatMessageAdded', handleMessageAdded as EventListener);
+      clearInterval(pollInterval);
     };
   }, [roomId]);
 
-  const loadMessages = () => {
-    const savedMessages = localStorage.getItem('chatMessages');
-    if (savedMessages) {
-      try {
-        const allMessages = JSON.parse(savedMessages);
-        const roomMessages = allMessages[roomId] || [];
-        setMessages(roomMessages);
-      } catch (error) {
-        console.error('메시지 로드 실패:', error);
+  const loadMessages = async () => {
+    try {
+      const response = await fetch(`/api/chat/${roomId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const roomMessages = data.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(roomMessages);
+
+          // 상대방의 XRP 주소 추출 (자신이 아닌 다른 사용자)
+          const otherUsers = roomMessages
+            .filter((msg: any) => msg.senderId !== currentUserId)
+            .map((msg: any) => msg.sender);
+
+          if (otherUsers.length > 0 && otherUsers[0].xrpAddress) {
+            setRecipientAddress(otherUsers[0].xrpAddress);
+          }
+        }
       }
+    } catch (error) {
+      console.error('메시지 로드 실패:', error);
     }
   };
 
   const handleSendMessage = async (content: string, type: 'text' | 'xrp_transfer' | 'token_transfer' = 'text', metadata?: any) => {
-    const newMessage: Message = {
-      id: `msg_${Date.now()}`,
-      roomId,
-      senderId: currentUserId,
-      type,
-      content,
-      metadata,
-      timestamp: new Date(),
-      isRead: false,
-      sender: {
-        id: currentUserId,
-        name: '나',
-        isOnline: true
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const messageData = {
+        senderId: currentUserId,
+        senderName: wallet?.name || '나',
+        senderXrpAddress: wallet?.addresses?.XRP,
+        type,
+        content,
+        metadata
+      };
+
+      const response = await fetch(`/api/chat/${roomId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // 메시지 전송 성공 후 즉시 새로고침
+          await loadMessages();
+        } else {
+          console.error('메시지 전송 실패:', data.error);
+        }
       }
-    };
-
-    // localStorage에 메시지 저장
-    const savedMessages = localStorage.getItem('chatMessages');
-    const allMessages = savedMessages ? JSON.parse(savedMessages) : {};
-    const roomMessages = allMessages[roomId] || [];
-    roomMessages.push(newMessage);
-    allMessages[roomId] = roomMessages;
-    localStorage.setItem('chatMessages', JSON.stringify(allMessages));
-
-    // 상태 업데이트
-    setMessages(prev => [...prev, newMessage]);
-
-    // 메시지 추가 이벤트 발생
-    window.dispatchEvent(new CustomEvent('chatMessageAdded', { detail: newMessage }));
+    } catch (error) {
+      console.error('메시지 전송 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <ChatHeader roomId={roomId} friendName={friendName} />
       <MessageList messages={messages} currentUserId={currentUserId} />
-      <MessageInput onSendMessage={handleSendMessage} />
+      <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} recipientAddress={recipientAddress} />
     </div>
   );
 }

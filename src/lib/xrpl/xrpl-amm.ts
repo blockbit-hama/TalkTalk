@@ -145,11 +145,23 @@ export class XRPLAMMManager {
     asset1: { currency: string; issuer?: string },
     asset2: { currency: string; issuer?: string }
   ): Promise<AMMPoolInfo | null> {
+    // 클라이언트 연결 확인 및 초기화
     if (!this.client) {
-      await this.connect();
+      const connected = await this.connect();
+      if (!connected) {
+        console.error('XRPL 클라이언트 연결 실패');
+        return null;
+      }
     }
 
-    if (!this.client) return null;
+    // 연결 상태 재확인
+    if (!this.client.isConnected()) {
+      const connected = await this.connect();
+      if (!connected) {
+        console.error('XRPL 클라이언트 재연결 실패');
+        return null;
+      }
+    }
 
     try {
       // 실제 XRPL AMM 정보 조회 시도
@@ -177,37 +189,16 @@ export class XRPLAMMManager {
         };
       }
 
-      // 실제 AMM 풀이 없는 경우 Mock 데이터 반환
-      console.log(`No real AMM pool found for ${asset1.currency}/${asset2.currency}, using fallback`);
-      return this.getMockAMMInfo(asset1, asset2);
+      // 실제 AMM 풀이 없는 경우 null 반환
+      console.log(`No real AMM pool found for ${asset1.currency}/${asset2.currency}`);
+      return null;
 
     } catch (error) {
-      console.warn('AMM info request failed, using fallback:', error);
-      return this.getMockAMMInfo(asset1, asset2);
+      console.warn('AMM info request failed:', error);
+      return null;
     }
   }
 
-  // Fallback Mock AMM 정보
-  private getMockAMMInfo(
-    asset1: { currency: string; issuer?: string },
-    asset2: { currency: string; issuer?: string }
-  ): AMMPoolInfo {
-    return {
-      account: 'rMockAMMAccount123456789',
-      amount: asset1.currency === 'XRP'
-        ? '1000000000' // 1000 XRP in drops
-        : { currency: asset1.currency, issuer: asset1.issuer, value: '10000' },
-      amount2: asset2.currency === 'XRP'
-        ? '500000000' // 500 XRP in drops
-        : { currency: asset2.currency, issuer: asset2.issuer, value: '5000' },
-      tradingFee: 3000, // 0.3%
-      lpToken: {
-        currency: 'LP',
-        issuer: 'rMockAMMAccount123456789',
-        value: '7071.067812' // sqrt(10000 * 5000)
-      }
-    };
-  }
 
   // 스왑 견적 계산 (Constant Product Formula: K = X * Y)
   calculateSwapQuote(
@@ -253,9 +244,27 @@ export class XRPLAMMManager {
     fromAsset: { currency: string; issuer?: string; amount: string },
     toAsset: { currency: string; issuer?: string; minAmount: string }
   ): Promise<string | null> {
-    if (!this.client || !this.wallet) {
-      console.error('Client or wallet not initialized');
+    if (!this.wallet) {
+      console.error('Wallet not initialized');
       return null;
+    }
+
+    // 클라이언트 연결 확인 및 초기화
+    if (!this.client) {
+      const connected = await this.connect();
+      if (!connected) {
+        console.error('XRPL 클라이언트 연결 실패');
+        return null;
+      }
+    }
+
+    // 연결 상태 재확인
+    if (!this.client.isConnected()) {
+      const connected = await this.connect();
+      if (!connected) {
+        console.error('XRPL 클라이언트 재연결 실패');
+        return null;
+      }
     }
 
     try {
@@ -298,55 +307,6 @@ export class XRPLAMMManager {
     }
   }
 
-  // Mock 스왑 실행 (실제 네트워크 연결 없이 테스트용)
-  async executeMockSwap(
-    fromCurrency: string,
-    toCurrency: string,
-    amount: string
-  ): Promise<{ success: boolean; hash?: string; outputAmount?: string; error?: string }> {
-    try {
-      // Devnet 실제 토큰 기반 환율 (AMM 풀 기반 근사치)
-      const mockRates: { [key: string]: number } = {
-        'XRP_USD': 0.5,     // XRP → USD (실제 AMM 풀 존재)
-        'USD_XRP': 2,       // USD → XRP
-        'XRP_CNY': 3.5,     // XRP → CNY (실제 AMM 풀 존재)
-        'CNY_XRP': 0.286,   // CNY → XRP
-        'XRP_EUR': 0.45,    // XRP → EUR
-        'EUR_XRP': 2.22,    // EUR → XRP
-        'XRP_TST': 10,      // XRP → Test Token
-        'TST_XRP': 0.1,     // Test Token → XRP
-        'USD_CNY': 7,       // USD → CNY
-        'CNY_USD': 0.143,   // CNY → USD
-        'USD_EUR': 0.9,     // USD → EUR
-        'EUR_USD': 1.11,    // EUR → USD
-        'USD_TST': 20,      // USD → Test Token
-        'TST_USD': 0.05,    // Test Token → USD
-      };
-
-      const rateKey = `${fromCurrency}_${toCurrency}`;
-      const rate = mockRates[rateKey] || 1;
-
-      const inputAmount = parseFloat(amount);
-      const outputAmount = inputAmount * rate * 0.997; // 0.3% 수수료 차감
-
-      // Mock 트랜잭션 해시
-      const mockHash = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      console.log(`Mock swap: ${amount} ${fromCurrency} → ${outputAmount.toFixed(6)} ${toCurrency}`);
-
-      return {
-        success: true,
-        hash: mockHash,
-        outputAmount: outputAmount.toFixed(6)
-      };
-    } catch (error) {
-      console.error('Mock swap failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Mock swap failed'
-      };
-    }
-  }
 
   // 사용 가능한 스왑 경로 조회
   async getAvailableSwapPairs(): Promise<Array<{ from: string; to: string; available: boolean }>> {

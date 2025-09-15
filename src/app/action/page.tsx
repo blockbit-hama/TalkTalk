@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useWalletList } from "../../hooks/useWalletAtoms";
-import { useWallet } from "../../hooks/wallet/useWallet";
+import { useWallet } from "../../hooks/useWallet";
 import { useEnabledAssets } from "../../hooks/useWalletAtoms";
 import { getTransactions, Transaction, testEthereumAPI } from "../../lib/api/transaction";
 
