@@ -8,16 +8,119 @@
 
 ## 📋 **목차**
 
-1. [지갑 생성 흐름](#지갑-생성-흐름)
-2. [지갑 복구 흐름](#지갑-복구-흐름)
-3. [자산 추가 흐름](#자산-추가-흐름)
-4. [친구 추가 흐름](#친구-추가-흐름)
-5. [전송 흐름](#전송-흐름)
-6. [채팅 흐름](#채팅-흐름)
-7. [스왑 흐름](#스왑-흐름)
-8. [Trust Line 설정 흐름](#trust-line-설정-흐름)
-9. [Faucet 사용 흐름](#faucet-사용-흐름)
-10. [실시간 잔액 조회 흐름](#실시간-잔액-조회-흐름)
+1. [전체 시스템 아키텍처 & 데이터 저장 구조](#전체-시스템-아키텍처--데이터-저장-구조)
+2. [지갑 생성 흐름](#지갑-생성-흐름)
+3. [지갑 복구 흐름](#지갑-복구-흐름)
+4. [자산 추가 흐름](#자산-추가-흐름)
+5. [친구 추가 흐름](#친구-추가-흐름)
+6. [전송 흐름](#전송-흐름)
+7. [채팅 흐름](#채팅-흐름)
+8. [스왑 흐름](#스왑-흐름)
+9. [Trust Line 설정 흐름](#trust-line-설정-흐름)
+10. [Faucet 사용 흐름](#faucet-사용-흐름)
+11. [실시간 잔액 조회 흐름](#실시간-잔액-조회-흐름)
+
+---
+
+## 🏗️ **전체 시스템 아키텍처 & 데이터 저장 구조**
+
+### 전체 시스템 데이터 저장 아키텍처 (v1.0.2)
+
+```mermaid
+graph LR
+    subgraph "Frontend (브라우저)"
+        U[사용자]
+        UI[React UI]
+
+        subgraph "LocalStorage (브라우저별)"
+            LSW[지갑 데이터<br/>- browserWalletId<br/>- 개인키/공개키<br/>- XRP 주소]
+            LSF[친구 데이터<br/>- 이름/전화번호<br/>- XRP 주소]
+            LSA[활성 자산<br/>- enabledAssets<br/>- 토큰 설정]
+            LSC[채팅 캐시<br/>- 임시 메시지<br/>- 오프라인 백업]
+        end
+    end
+
+    subgraph "Backend (Next.js)"
+        API[API Routes<br/>/api/chat/]
+
+        subgraph "Development"
+            MEM[서버 메모리<br/>- 채팅 메시지<br/>- 임시 저장]
+        end
+
+        subgraph "Production"
+            KV[Vercel KV<br/>- 채팅 메시지<br/>- 영구 저장]
+        end
+    end
+
+    subgraph "Blockchain (XRPL)"
+        XN[XRPL Devnet<br/>- 트랜잭션<br/>- 잔액 정보<br/>- Trust Lines]
+    end
+
+    U --> UI
+    UI --> LSW
+    UI --> LSF
+    UI --> LSA
+    UI --> LSC
+
+    UI -.->|채팅 API| API
+    API --> MEM
+    API --> KV
+
+    UI -->|블록체인 조회/전송| XN
+
+    style LSW fill:#e1f5fe
+    style LSF fill:#e1f5fe
+    style LSA fill:#e1f5fe
+    style LSC fill:#fff3e0
+    style MEM fill:#f3e5f5
+    style KV fill:#e8f5e9
+    style XN fill:#fff9c4
+```
+
+### 데이터 저장 위치 매트릭스
+
+| 데이터 종류 | LocalStorage | Server Memory | Vercel KV | XRPL Network | 설명 |
+|-------------|--------------|---------------|-----------|--------------|------|
+| **지갑 정보** | ✅ | ❌ | ❌ | ❌ | 브라우저별 개인키/주소 |
+| **친구 목록** | ✅ | ❌ | ❌ | ❌ | 전화번호/이름/주소 |
+| **활성 자산** | ✅ | ❌ | ❌ | ❌ | 사용자 토큰 설정 |
+| **채팅 메시지** | 🔄 (캐시) | ✅ (Dev) | ✅ (Prod) | ❌ | 서버 기반 실시간 |
+| **트랜잭션** | ❌ | ❌ | ❌ | ✅ | 블록체인 영구 저장 |
+| **잔액 정보** | ❌ | ❌ | ❌ | ✅ | 실시간 블록체인 조회 |
+| **Trust Lines** | ❌ | ❌ | ❌ | ✅ | XRPL 네트워크 설정 |
+
+### 브라우저별 독립 지갑 시스템
+
+```mermaid
+sequenceDiagram
+    participant B1 as 브라우저 1
+    participant B2 as 브라우저 2
+    participant LS1 as LocalStorage 1
+    participant LS2 as LocalStorage 2
+    participant API as Next.js API
+    participant XN as XRPL Network
+
+    Note over B1,B2: 각 브라우저는 독립된 지갑 보유
+
+    B1->>B1: browserWalletId 생성
+    B1->>LS1: hdWallet_browser1_xxx 저장
+    Note over LS1: 지갑1: rXXX...ABC
+
+    B2->>B2: browserWalletId 생성
+    B2->>LS2: hdWallet_browser2_yyy 저장
+    Note over LS2: 지갑2: rYYY...DEF
+
+    B1->>XN: 지갑1에서 전송
+    XN->>B2: 지갑2로 수신
+
+    Note over B1,B2: 브라우저 간 XRP 전송 테스트 가능
+
+    B1->>API: 채팅: "10 XRP 보냈어"
+    API->>B2: 폴링으로 메시지 수신
+
+    Note over B1,API: 채팅은 서버 동기화
+    Note over LS1,LS2: 지갑은 브라우저별 독립
+```
 
 ---
 
@@ -342,7 +445,7 @@ sequenceDiagram
 
 ## 💬 **채팅 흐름**
 
-### 채팅방 입장 흐름
+### 서버 기반 채팅방 입장 흐름 (v1.0.2)
 
 ```mermaid
 sequenceDiagram
@@ -350,59 +453,119 @@ sequenceDiagram
     participant UI as Frontend UI
     participant CL as Chat List
     participant CR as Chat Room
-    participant CS as Chat Storage
-    participant LS as LocalStorage
+    participant API as Next.js API Routes
+    participant MEM as Server Memory
+    participant KV as Vercel KV (Production)
+    participant LS as LocalStorage (Fallback)
 
     U->>UI: 채팅 탭 클릭
     UI->>CL: 채팅방 목록 표시
-    
-    CL->>CS: loadChatRooms() 호출
-    CS->>LS: 채팅방 데이터 조회
-    LS-->>CS: 채팅방 목록 반환
-    CS-->>CL: 채팅방 목록 반환
-    
+
+    CL->>API: GET /api/chat/[roomId]/messages
+
+    alt Production 환경
+        API->>KV: 채팅방 데이터 조회
+        KV-->>API: 채팅방 목록 반환
+    else Development 환경
+        API->>MEM: 메모리에서 채팅방 조회
+        MEM-->>API: 채팅방 목록 반환
+    else Fallback (오프라인)
+        CL->>LS: localStorage 조회
+        LS-->>CL: 캐시된 데이터 반환
+    end
+
+    API-->>CL: 채팅방 목록 응답
     CL->>UI: 채팅방 목록 UI 표시
-    
+
     U->>CL: 채팅방 선택
     CL->>UI: 채팅방 페이지로 이동
-    
+
     UI->>CR: ChatRoom 컴포넌트 렌더링
-    CR->>CS: loadMessages() 호출
-    CS->>LS: 메시지 데이터 조회
-    LS-->>CS: 메시지 목록 반환
-    CS-->>CR: 메시지 목록 반환
-    
+    CR->>API: GET /api/chat/[roomId]/messages
+
+    alt Production 환경
+        API->>KV: 메시지 데이터 조회
+        KV-->>API: 메시지 목록 반환
+    else Development 환경
+        API->>MEM: 메모리에서 메시지 조회
+        MEM-->>API: 메시지 목록 반환
+    end
+
+    API-->>CR: 메시지 목록 응답
     CR->>UI: 채팅방 UI 표시
-    
-    Note over U,UI: 채팅방 입장 완료
+
+    Note over U,KV: 서버 기반 채팅방 입장 완료
 ```
 
-### 메시지 전송 흐름
+### 서버 기반 메시지 전송 흐름 (v1.0.2)
 
 ```mermaid
 sequenceDiagram
     participant U as 사용자
     participant UI as Frontend UI
     participant CR as Chat Room
-    participant CS as Chat Storage
-    participant LS as LocalStorage
+    participant API as Next.js API Routes
+    participant MEM as Server Memory
+    participant KV as Vercel KV (Production)
+    participant LS as LocalStorage (Cache)
 
     U->>UI: 메시지 입력
     U->>UI: 전송 버튼 클릭
-    
+
     UI->>CR: sendMessage() 호출
     CR->>CR: 메시지 객체 생성
-    
-    CR->>CS: saveMessage() 호출
-    CS->>LS: 메시지 저장
-    LS-->>CS: 저장 완료
-    CS-->>CR: 저장 완료
-    
+
+    CR->>API: POST /api/chat/[roomId]/messages
+    Note over API: 메시지 데이터: {text, sender, timestamp}
+
+    alt Production 환경
+        API->>KV: 메시지 저장
+        KV-->>API: 저장 완료
+    else Development 환경
+        API->>MEM: 메모리에 저장
+        MEM-->>API: 저장 완료
+    end
+
+    API-->>CR: 저장 응답 (201 Created)
+
+    CR->>LS: 로컬 캐시 업데이트 (옵션)
     CR->>UI: 메시지 UI 업데이트
     CR->>UI: 입력창 초기화
-    
-    Note over U,UI: 메시지 전송 완료
+
+    Note over U,KV: 서버 기반 메시지 전송 완료
 ```
+
+### 실시간 메시지 폴링 흐름 (v1.0.2)
+
+```mermaid
+sequenceDiagram
+    participant U1 as 사용자 1
+    participant UI1 as Frontend 1
+    participant U2 as 사용자 2
+    participant UI2 as Frontend 2
+    participant API as Next.js API Routes
+    participant MEM as Server Memory/KV
+
+    Note over UI1,UI2: 3초마다 폴링 실행
+
+    U1->>UI1: 메시지 전송
+    UI1->>API: POST /api/chat/[roomId]/messages
+    API->>MEM: 메시지 저장
+    MEM-->>API: 저장 완료
+    API-->>UI1: 201 Created
+
+    UI2->>UI2: 폴링 타이머 (3초)
+    UI2->>API: GET /api/chat/[roomId]/messages
+    API->>MEM: 새 메시지 조회
+    MEM-->>API: 메시지 목록 반환
+    API-->>UI2: 메시지 응답
+
+    UI2->>UI2: 새 메시지 표시
+
+    Note over U1,MEM: 폴링 기반 실시간 동기화
+```
+
+### 기존 LocalStorage 기반 채팅 흐름 (Legacy)
 
 ### 전송 이벤트 채팅 추가 흐름
 
