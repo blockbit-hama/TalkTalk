@@ -1,5 +1,5 @@
 {
-  "name": "xtalk-wallet",
+  "name": "talktalk",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "docker:build": "docker build -t xtalk-wallet .",
-    "docker:run": "docker run -p 9002:9002 --name xtalk-wallet xtalk-wallet",
+    "docker:build": "docker build -t talktalk .",
+    "docker:run": "docker run -p 9002:9002 --name talktalk talktalk",
     "docker:clean": "docker system prune -f && docker volume prune -f"
   },
   "dependencies": {

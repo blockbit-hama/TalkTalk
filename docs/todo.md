@@ -1,4 +1,4 @@
-# xTalk-Wallet TODO 로드맵 📱
+# TalkTalk TODO 로드맵 📱
 
 > **프로젝트**: XRPL 기반 소셜 지갑 앱
 > **목표**: 전송 + 채팅 + 친구 기능을 통합한 Web3 소셜 지갑

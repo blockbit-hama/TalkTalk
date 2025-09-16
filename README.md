@@ -1,4 +1,4 @@
-# xTalk-Wallet 📱
+# TalkTalk 📱
 
 > **XRPL 기반 소셜 지갑 앱**
 > 전송 + 채팅 + 친구 기능을 통합한 Web3 소셜 지갑
@@ -80,8 +80,8 @@
 
 ### 1. **설치**
 ```bash
-git clone https://github.com/your-repo/xtalk-wallet.git
-cd xtalk-wallet
+git clone https://github.com/blockbit-hama/TalkTalk.git
+cd talktalk
 npm install
 ```
 

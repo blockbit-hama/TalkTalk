@@ -1,4 +1,4 @@
-# 🚀 xTalk-Wallet: 차세대 소셜 Web3 지갑
+# 🚀 TalkTalk: 차세대 소셜 Web3 지갑
 
 <div align="center">
   <img src="https://img.shields.io/badge/Version-1.0.2-brightgreen" alt="Version">
@@ -19,7 +19,7 @@
 
 > **"블록체인을 복잡하게 생각하지 마세요. 친구와 채팅하듯 자연스럽게."**
 
-xTalk-Wallet은 단순한 암호화폐 지갑이 아닙니다. 친구와 대화하고, 돈을 보내고, 자산을 관리하는 모든 과정을 하나의 앱에서 자연스럽게 연결한 **소셜 Web3 플랫폼**입니다.
+TalkTalk은 단순한 암호화폐 지갑이 아닙니다. 친구와 대화하고, 돈을 보내고, 자산을 관리하는 모든 과정을 하나의 앱에서 자연스럽게 연결한 **소셜 Web3 플랫폼**입니다.
 
 ### 🎯 **핵심 가치**
 
@@ -138,7 +138,7 @@ xTalk-Wallet은 단순한 암호화폐 지갑이 아닙니다. 친구와 대화�
 ### **1. 빠른 시작 (1분)**
 ```bash
 # 저장소 클론
-git clone https://github.com/blockbit-hama/xTalk-Wallet.git
+git clone https://github.com/blockbit-hama/TalkTalk.git
 
 # 의존성 설치
 npm install
@@ -225,10 +225,10 @@ http://localhost:3000
 <div align="center">
   <h3>🚀 함께 만들어가는 Web3의 미래</h3>
   <p>
-    <a href="https://github.com/blockbit-hama/xTalk-Wallet">GitHub</a> •
+    <a href="https://github.com/blockbit-hama/TalkTalk">GitHub</a> •
     <a href="https://xrpl.org">XRPL</a> •
     <a href="https://vercel.com">Vercel</a>
   </p>
   <br>
-  <strong>© 2025 xTalk-Wallet. Building the Social Web3.</strong>
+  <strong>© 2025 TalkTalk. Building the Social Web3.</strong>
 </div>

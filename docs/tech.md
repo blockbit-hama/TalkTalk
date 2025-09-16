@@ -9,7 +9,7 @@
 - XRPL(XRP Ledger)은 빠른 거래 확정성(Finality)과 낮은 수수료, 그리고 계정 기반 구조(AccountSet, TrustLine 등)라는 특유의 설계를 갖춘 블록체인입니다.
 - 메인넷과 Devnet은 구조적으로 동일하지만, Devnet은 무료 발급 시드와 Faucet을 통한 테스트 자산 지급이 가능하며, 최신 기능들을 시험할 수 있어 이번 프로젝트에서는 Devnet 환경을 사용했습니다.
 
-**🆕 v1.1 업데이트**: xTalk-Wallet에서는 실제 XRPL Devnet AMM 풀을 활용하여 실제 블록체인 경험을 제공합니다. USD(`rJgqyVQrzRQTQREVTYK21843LR7vb7LapX`)와 CNY(`rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x`) 토큰이 실제 AMM 풀에서 스왑 가능합니다.
+**🆕 v1.1 업데이트**: TalkTalk에서는 실제 XRPL Devnet AMM 풀을 활용하여 실제 블록체인 경험을 제공합니다. USD(`rJgqyVQrzRQTQREVTYK21843LR7vb7LapX`)와 CNY(`rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x`) 토큰이 실제 AMM 풀에서 스왑 가능합니다.
 
 ---
 

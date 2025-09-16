@@ -1,7 +1,7 @@
 # XRPL Devnet AMM 풀 조사 보고서
 
 ## 조사 개요
-XRPL Devnet에서 현재 운영 중인 Automated Market Maker (AMM) 풀들을 실제 API를 통해 조사하고, xTalk-Wallet 프로젝트에서의 활용 방안을 검토한 보고서입니다.
+XRPL Devnet에서 현재 운영 중인 Automated Market Maker (AMM) 풀들을 실제 API를 통해 조사하고, TalkTalk 프로젝트에서의 활용 방안을 검토한 보고서입니다.
 
 **조사 일시**: 2025-09-15
 **조사 방법**: XRPL Devnet API 직접 조회
@@ -91,10 +91,10 @@ rhosNALsyfaQGShmMejBuwwfNqCerkTa2m
 - **LP 토큰**: SHA-512 해시 기반의 특수 currency 코드 사용
 - **자동 중재**: 경매 시스템을 통한 즉시 차익거래 및 안정적 변동성 유지
 
-## 4. xTalk-Wallet 활용 방안
+## 4. TalkTalk 활용 방안
 
 ### 4.1 현재 상황 분석
-**현재 xTalk-Wallet 구조**:
+**현재 TalkTalk 구조**:
 - Mock 토큰 사용: USD, EUR, JPY, KRW (발행자: `rN7n7otQDd6FczFgLdAtqDSSz6Mk5P1MBo`)
 - Mock AMM 매니저로 가상 스왑 실행
 
@@ -201,7 +201,7 @@ async createDevnetTrustLine(): Promise<string | null> {
 2. **실제 토큰 사용 가능**: Mock 토큰 대신 실제 Devnet 토큰 활용 가능
 3. **프로토콜 수준 통합**: 이더리움과 달리 XRPL 코어에 직접 통합된 AMM
 
-### 6.2 xTalk-Wallet 개선 권장사항
+### 6.2 TalkTalk 개선 권장사항
 1. **즉시 적용 가능**: 현재 Mock AMM을 Devnet AMM으로 전환
 2. **사용자 경험 향상**: 실제 거래 시뮬레이션 및 실제 시장 데이터 활용
 3. **학습 효과**: 실제 XRPL AMM 메커니즘 이해 및 경험
@@ -212,4 +212,4 @@ async createDevnetTrustLine(): Promise<string | null> {
 3. **Trust Line 구현**: 실제 토큰 사용을 위한 Trust Line 자동 생성
 4. **테스트넷 활용**: Devnet Faucet 활용한 테스트 토큰 확보
 
-**결론**: XRPL Devnet에는 충분한 수의 활성 AMM 풀이 존재하며, xTalk-Wallet에서 Mock 구현 대신 실제 Devnet AMM을 활용하는 것이 교육적 가치와 사용자 경험 측면에서 훨씬 유리할 것으로 판단됩니다.
+**결론**: XRPL Devnet에는 충분한 수의 활성 AMM 풀이 존재하며, TalkTalk에서 Mock 구현 대신 실제 Devnet AMM을 활용하는 것이 교육적 가치와 사용자 경험 측면에서 훨씬 유리할 것으로 판단됩니다.
