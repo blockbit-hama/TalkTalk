@@ -2,6 +2,104 @@
 
 import { useState, useEffect } from 'react';
 
+// 아름다운 국기 아이콘 컴포넌트들
+const XRPIcon = ({ size = 72 }: { size?: number }) => (
+  <div style={{
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #23292F 0%, #F2A003 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(242, 160, 3, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)'
+  }}>
+    <span style={{ color: 'white', fontWeight: 'bold', fontSize: size * 0.4, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>X</span>
+  </div>
+);
+
+const USDIcon = ({ size = 72 }: { size?: number }) => (
+  <div style={{
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #002868 0%, #BF0A30 50%, #FFFFFF 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(191, 10, 48, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)',
+    position: 'relative'
+  }}>
+    <div style={{
+      position: 'absolute',
+      inset: '8px',
+      borderRadius: '50%',
+      background: '#002868',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <span style={{ color: 'white', fontWeight: 'bold', fontSize: size * 0.25 }}>🇺🇸</span>
+    </div>
+  </div>
+);
+
+const CNYIcon = ({ size = 72 }: { size?: number }) => (
+  <div style={{
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #DE2910 0%, #FFDE00 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(222, 41, 16, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)',
+    position: 'relative'
+  }}>
+    <div style={{
+      position: 'absolute',
+      inset: '8px',
+      borderRadius: '50%',
+      background: '#DE2910',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <span style={{ color: '#FFDE00', fontWeight: 'bold', fontSize: size * 0.25 }}>🇨🇳</span>
+    </div>
+  </div>
+);
+
+const EURIcon = ({ size = 72 }: { size?: number }) => (
+  <div style={{
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #003399 0%, #FFCC00 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(0, 51, 153, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)',
+    position: 'relative'
+  }}>
+    <div style={{
+      position: 'absolute',
+      inset: '8px',
+      borderRadius: '50%',
+      background: '#003399',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <span style={{ color: '#FFCC00', fontWeight: 'bold', fontSize: size * 0.25 }}>🇪🇺</span>
+    </div>
+  </div>
+);
+
 interface ClientOnlyAssetDisplayProps {
   selectedWallet: any;
   xrpBalance: any;
@@ -70,11 +168,9 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
         <>
           {selectedWallet.addresses.XRP && enabledAssets.includes('XRP') && (
             <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <div style={{ width: 72, height: 72, backgroundColor: '#F2A003', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '24px' }}>
-                X
-              </div>
+              <XRPIcon />
               <div className="balance-card-inner">
-                <span className="balance-card-name">XRP</span>
+                <span className="balance-card-name">XRP Ledger</span>
                 <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
                   {xrpBalance?.data?.balance || '0.00'} XRP
                 </div>
@@ -87,13 +183,41 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
 
           {enabledAssets.includes('EUR') && (
             <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <div style={{ width: 72, height: 72, backgroundColor: '#0066CC', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '24px' }}>
-                €
-              </div>
+              <EURIcon />
               <div className="balance-card-inner">
-                <span className="balance-card-name">EUR</span>
+                <span className="balance-card-name">유로화 (EUR)</span>
                 <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
                   0.00 EUR
+                </div>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                  $0.00
+                </div>
+              </div>
+            </div>
+          )}
+
+          {enabledAssets.includes('USD') && (
+            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
+              <USDIcon />
+              <div className="balance-card-inner">
+                <span className="balance-card-name">미국 달러 (USD)</span>
+                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                  0.00 USD
+                </div>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                  $0.00
+                </div>
+              </div>
+            </div>
+          )}
+
+          {enabledAssets.includes('CNY') && (
+            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
+              <CNYIcon />
+              <div className="balance-card-inner">
+                <span className="balance-card-name">중국 위안 (CNY)</span>
+                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                  0.00 CNY
                 </div>
                 <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
                   $0.00

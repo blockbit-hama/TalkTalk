@@ -53,11 +53,11 @@ export default function AddAssetsPage() {
 
   // XRPL Devnet 실제 자산 목록
   const supportedAssets = [
-    { id: "xrp", symbol: "XRP", name: "XRP", icon: "X", networkType: "XRPL Devnet", issuer: null },
-    { id: "devnet-usd", symbol: "USD", name: "Devnet USD", icon: "$", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rJgqyVQrzRQTQREVTYK21843LR7vb7LapX" },
-    { id: "devnet-cny", symbol: "CNY", name: "Devnet CNY", icon: "¥", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x" },
-    { id: "devnet-eur", symbol: "EUR", name: "Devnet EUR", icon: "€", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj" },
-    { id: "devnet-tst", symbol: "TST", name: "Devnet Test Token", icon: "T", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
+    { id: "xrp", symbol: "XRP", name: "XRP Ledger", icon: "X", networkType: "XRPL Devnet", issuer: null },
+    { id: "devnet-usd", symbol: "USD", name: "미국 달러 (USD)", icon: "$", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rJgqyVQrzRQTQREVTYK21843LR7vb7LapX" },
+    { id: "devnet-cny", symbol: "CNY", name: "중국 위안 (CNY)", icon: "¥", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x" },
+    { id: "devnet-eur", symbol: "EUR", name: "유로화 (EUR)", icon: "€", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj" },
+    { id: "devnet-tst", symbol: "TST", name: "테스트 토큰 (TST)", icon: "T", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
   ];
 
   // XRPL 자산 가격 정보 로드
