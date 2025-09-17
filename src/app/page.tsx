@@ -125,6 +125,7 @@ export default function Home() {
   const [balanceType, setBalanceType] = useState<'잔액' | 'NFT'>('잔액');
   const [phoneModalOpen, setPhoneModalOpen] = useState<boolean>(false);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const balanceOptions = ['잔액', 'NFT'] as const;
   
   // useMasterAddress 훅 사용
@@ -387,13 +388,18 @@ export default function Home() {
       return;
     }
 
+    if (!userName.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+
     if (!selectedWallet?.addresses.XRP) {
       alert('지갑 주소를 찾을 수 없습니다.');
       return;
     }
 
     try {
-      console.log('📞 전화번호 등록 시작:', phoneNumber, '→', selectedWallet.addresses.XRP);
+      console.log('📞 전화번호 등록 시작:', phoneNumber, userName, '→', selectedWallet.addresses.XRP);
 
       const response = await fetch('/api/phone-mapping', {
         method: 'POST',
@@ -403,18 +409,21 @@ export default function Home() {
         body: JSON.stringify({
           phoneNumber: phoneNumber.trim(),
           walletAddress: selectedWallet.addresses.XRP,
+          userName: userName.trim(),
         }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        alert(`전화번호 ${phoneNumber}가 지갑 주소와 연동되었습니다!`);
+        alert(`${userName}님의 전화번호 ${phoneNumber}가 지갑 주소와 연동되었습니다!`);
         setPhoneModalOpen(false);
         setPhoneNumber('');
+        setUserName('');
 
         // 로컬스토리지에도 저장 (UI 표시용)
         localStorage.setItem('userPhoneNumber', phoneNumber.trim());
+        localStorage.setItem('userName', userName.trim());
       } else {
         alert(result.error || '전화번호 등록에 실패했습니다.');
       }
@@ -852,14 +861,27 @@ export default function Home() {
         onClose={() => {
           setPhoneModalOpen(false);
           setPhoneNumber('');
+          setUserName('');
         }}
-        title="전화번호 연동"
+        title="계정 정보 등록"
         type="info"
       >
         <div className="space-y-4">
           <p className="text-gray-300">
-            친구들이 당신을 전화번호로 찾을 수 있도록 전화번호를 등록해주세요.
+            친구들이 당신을 찾을 수 있도록 이름과 전화번호를 등록해주세요.
           </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              이름
+            </label>
+            <input
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="홍길동"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-[#F2A003]"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               전화번호
@@ -882,6 +904,7 @@ export default function Home() {
               onClick={() => {
                 setPhoneModalOpen(false);
                 setPhoneNumber('');
+                setUserName('');
               }}
               className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors"
             >
@@ -889,7 +912,7 @@ export default function Home() {
             </button>
             <button
               onClick={handlePhoneRegistration}
-              disabled={!phoneNumber.trim()}
+              disabled={!phoneNumber.trim() || !userName.trim()}
               className="flex-1 px-4 py-2 bg-[#F2A003] hover:bg-[#E09400] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
               등록

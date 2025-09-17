@@ -5,6 +5,7 @@ import { kv } from '@vercel/kv';
 interface PhoneMapping {
   phoneNumber: string;
   walletAddress: string;
+  userName: string;
   createdAt: string;
 }
 
@@ -75,14 +76,14 @@ async function getAllMappings(): Promise<Array<[string, PhoneMapping]>> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, walletAddress } = await request.json();
+    const { phoneNumber, walletAddress, userName } = await request.json();
 
-    console.log('📞 전화번호 매핑 요청:', { phoneNumber, walletAddress });
+    console.log('📞 전화번호 매핑 요청:', { phoneNumber, walletAddress, userName });
 
     // 입력 검증
-    if (!phoneNumber || !walletAddress) {
+    if (!phoneNumber || !walletAddress || !userName) {
       return NextResponse.json(
-        { error: '전화번호와 지갑 주소가 필요합니다.' },
+        { error: '전화번호, 지갑 주소, 이름이 모두 필요합니다.' },
         { status: 400 }
       );
     }
@@ -104,9 +105,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 이름 검증
+    if (userName.trim().length < 1 || userName.trim().length > 20) {
+      return NextResponse.json(
+        { error: '이름은 1~20자 사이여야 합니다.' },
+        { status: 400 }
+      );
+    }
+
     const mapping: PhoneMapping = {
       phoneNumber: cleanPhoneNumber,
       walletAddress,
+      userName: userName.trim(),
       createdAt: new Date().toISOString(),
     };
 
@@ -196,6 +206,7 @@ export async function GET(request: NextRequest) {
       success: true,
       phoneNumber: mapping.phoneNumber,
       walletAddress: mapping.walletAddress,
+      userName: mapping.userName,
       storage: isKVAvailable() ? 'KV' : 'Memory'
     });
 

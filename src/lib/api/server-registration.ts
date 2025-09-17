@@ -94,7 +94,7 @@ export async function searchFriendByPhone(phoneNumber: string): Promise<{
       // 서버에서 찾은 친구 정보
       const friend = {
         id: `friend_${Date.now()}`,
-        name: '친구', // 기본 이름 (사용자가 입력한 이름으로 덮어씌워짐)
+        name: result.userName || '친구', // 서버에서 받은 실제 이름 사용
         phoneNumber: result.phoneNumber,
         xrplAddress: result.walletAddress,
         isRegistered: true

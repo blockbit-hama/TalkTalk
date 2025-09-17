@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
 
     // 2. 상대방에게도 나를 친구로 추가 (양방향 관계 생성)
     try {
-      // 전화번호 매핑 API에서 현재 사용자의 전화번호 찾기
+      // 전화번호 매핑 API에서 현재 사용자의 전화번호와 이름 찾기
       const userPhoneResponse = await fetch(`http://localhost:9001/api/phone-mapping?walletAddress=${encodeURIComponent(userId)}`);
       let currentUserPhone = '알 수 없음';
       let currentUserName = '친구';
@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
         const phoneData = await userPhoneResponse.json();
         if (phoneData.success) {
           currentUserPhone = phoneData.phoneNumber;
+          currentUserName = phoneData.userName || '친구'; // 서버에서 받은 실제 이름 사용
         }
       }
 
