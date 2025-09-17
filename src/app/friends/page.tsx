@@ -23,10 +23,19 @@ export default function FriendsPage() {
   const [newFriendName, setNewFriendName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 서버에서 친구 데이터 로드
+  // 서버에서 친구 데이터 로드 및 실시간 동기화
   useEffect(() => {
     if (wallet?.addresses?.XRP) {
       loadFriends();
+
+      // 3초마다 친구 목록 동기화 (상대방이 나를 추가했는지 확인)
+      const pollInterval = setInterval(() => {
+        loadFriends();
+      }, 3000);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
     }
   }, [wallet]);
 

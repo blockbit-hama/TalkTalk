@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
       friendAddress
     } = await request.json();
 
-    console.log('👥 친구 관계 추가 요청:', {
+    console.log('\n=== 친구 관계 추가 요청 ===');
+    console.log('👥 요청 데이터:', {
       userId,
       friendId,
       friendName,
@@ -172,22 +173,29 @@ export async function POST(request: NextRequest) {
     await saveFriendRelationships(userId, userFriends);
 
     // 2. 상대방에게도 나를 친구로 추가 (양방향 관계 생성)
+    console.log('\n=== 양방향 친구 관계 생성 시작 ===');
     try {
       // 전화번호 매핑 API에서 현재 사용자의 전화번호와 이름 찾기
+      console.log('📞 현재 사용자 정보 조회:', userId);
       const userPhoneResponse = await fetch(`http://localhost:9001/api/phone-mapping?walletAddress=${encodeURIComponent(userId)}`);
       let currentUserPhone = '알 수 없음';
       let currentUserName = '친구';
 
+      console.log('📡 전화번호 조회 응답 상태:', userPhoneResponse.status);
       if (userPhoneResponse.ok) {
         const phoneData = await userPhoneResponse.json();
+        console.log('📄 전화번호 조회 결과:', phoneData);
         if (phoneData.success) {
           currentUserPhone = phoneData.phoneNumber;
           currentUserName = phoneData.userName || '친구'; // 서버에서 받은 실제 이름 사용
+          console.log('✅ 현재 사용자 정보:', { currentUserPhone, currentUserName });
         }
       }
 
       // 상대방의 친구 목록에 현재 사용자를 추가
+      console.log('🔍 상대방 친구 목록 조회:', friendAddress);
       const friendFriends = await getFriendRelationships(friendAddress);
+      console.log('📋 상대방 기존 친구 수:', friendFriends.length);
 
       // 상대방 친구 목록에서 나를 이미 친구로 가지고 있는지 확인
       const existingReverseFriend = friendFriends.find(friend =>
@@ -195,10 +203,11 @@ export async function POST(request: NextRequest) {
       );
 
       if (!existingReverseFriend) {
+        console.log('➕ 상대방에게 나를 친구로 추가');
         const reverseFriendship: FriendRelationship = {
           userId: friendAddress, // 상대방이 주인
           friendId: userId, // 나를 친구로
-          friendName: currentUserName, // 상대방이 나를 부를 이름 (기본값)
+          friendName: currentUserName, // 상대방이 나를 부를 이름
           friendPhone: currentUserPhone,
           friendAddress: userId,
           isOnline: true,
@@ -209,7 +218,10 @@ export async function POST(request: NextRequest) {
         friendFriends.push(reverseFriendship);
         await saveFriendRelationships(friendAddress, friendFriends);
 
-        console.log('🔄 양방향 친구 관계 생성:', reverseFriendship);
+        console.log('🔄 양방향 친구 관계 생성 완료:', reverseFriendship);
+        console.log('📊 상대방 친구 목록 업데이트 완료, 새 친구 수:', friendFriends.length);
+      } else {
+        console.log('⚠️ 상대방이 이미 나를 친구로 가지고 있음');
       }
     } catch (error) {
       console.error('양방향 친구 관계 생성 실패 (단방향으로 진행):', error);
