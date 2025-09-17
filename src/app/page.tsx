@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils/utils';
 import { useWallet } from "../hooks/useWallet";
 import { useWalletBalance } from "../hooks/queries/useWalletBalance";
 import { Button, Input, Card } from "../components/ui";
+import { Modal } from "../components/ui/Modal";
 import { useQueryClient } from '@tanstack/react-query';
 import { regenerateAllWalletPrivateKeys, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
 import { xrplFaucet } from "../lib/xrpl/xrpl-faucet";
@@ -122,6 +123,8 @@ export default function Home() {
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [walletSelectOpen, setWalletSelectOpen] = useState<boolean>(false);
   const [balanceType, setBalanceType] = useState<'잔액' | 'NFT'>('잔액');
+  const [phoneModalOpen, setPhoneModalOpen] = useState<boolean>(false);
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
   const balanceOptions = ['잔액', 'NFT'] as const;
   
   // useMasterAddress 훅 사용
@@ -377,6 +380,49 @@ export default function Home() {
     }
   };
 
+  // 전화번호 등록 함수
+  const handlePhoneRegistration = async () => {
+    if (!phoneNumber.trim()) {
+      alert('전화번호를 입력해주세요.');
+      return;
+    }
+
+    if (!selectedWallet?.addresses.XRP) {
+      alert('지갑 주소를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      console.log('📞 전화번호 등록 시작:', phoneNumber, '→', selectedWallet.addresses.XRP);
+
+      const response = await fetch('/api/phone-mapping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber.trim(),
+          walletAddress: selectedWallet.addresses.XRP,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`전화번호 ${phoneNumber}가 지갑 주소와 연동되었습니다!`);
+        setPhoneModalOpen(false);
+        setPhoneNumber('');
+
+        // 로컬스토리지에도 저장 (UI 표시용)
+        localStorage.setItem('userPhoneNumber', phoneNumber.trim());
+      } else {
+        alert(result.error || '전화번호 등록에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('전화번호 등록 오류:', error);
+      alert('전화번호 등록 중 오류가 발생했습니다.');
+    }
+  };
 
   // 디버깅용 useEffect
   useEffect(() => {
@@ -572,6 +618,25 @@ export default function Home() {
               )}
             </div>
           </div>
+
+          {/* 전화번호 연동 버튼 */}
+          <div>
+            <button
+              className="profile-button"
+              aria-label="전화번호 연동"
+              onClick={() => setPhoneModalOpen(true)}
+              style={{ marginRight: '8px' }}
+            >
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="4" width="12" height="20" rx="2" stroke="#F2A003" strokeWidth="2" fill="none"/>
+                <rect x="13" y="7" width="6" height="1" fill="#F2A003"/>
+                <circle cx="16" cy="20" r="1" fill="#F2A003"/>
+                <path d="M8 12C8 11.4477 8.44772 11 9 11H11" stroke="#F2A003" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M24 12C24 11.4477 23.5523 11 23 11H21" stroke="#F2A003" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
           {/* QR 코드 스캔 버튼 */}
           <div>
             <button
@@ -780,6 +845,58 @@ export default function Home() {
           <span>xTalk Wallet</span>
         </div>
       </main>
+
+      {/* 전화번호 등록 모달 */}
+      <Modal
+        isOpen={phoneModalOpen}
+        onClose={() => {
+          setPhoneModalOpen(false);
+          setPhoneNumber('');
+        }}
+        title="전화번호 연동"
+        type="info"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300">
+            친구들이 당신을 전화번호로 찾을 수 있도록 전화번호를 등록해주세요.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              전화번호
+            </label>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="010-1234-5678"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-[#F2A003]"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handlePhoneRegistration();
+                }
+              }}
+            />
+          </div>
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={() => {
+                setPhoneModalOpen(false);
+                setPhoneNumber('');
+              }}
+              className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors"
+            >
+              취소
+            </button>
+            <button
+              onClick={handlePhoneRegistration}
+              disabled={!phoneNumber.trim()}
+              className="flex-1 px-4 py-2 bg-[#F2A003] hover:bg-[#E09400] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+            >
+              등록
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* 하단 탭바 */}
       <TabBar />

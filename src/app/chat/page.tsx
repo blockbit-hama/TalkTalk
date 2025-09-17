@@ -7,23 +7,31 @@ import { ChatRoom } from '@/components/chat/ChatRoom';
 export default function ChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [friendId, setFriendId] = useState<string | null>(null);
   const [friendName, setFriendName] = useState<string>('');
+  const [friendAddress, setFriendAddress] = useState<string>('');
 
   useEffect(() => {
+    const roomIdParam = searchParams.get('roomId');
     const friendIdParam = searchParams.get('friendId');
     const friendNameParam = searchParams.get('friendName');
-    
-    if (friendIdParam && friendNameParam) {
+    const friendAddressParam = searchParams.get('friendAddress');
+
+    if (roomIdParam && friendIdParam && friendNameParam) {
+      setRoomId(roomIdParam);
       setFriendId(friendIdParam);
       setFriendName(decodeURIComponent(friendNameParam));
+      if (friendAddressParam) {
+        setFriendAddress(decodeURIComponent(friendAddressParam));
+      }
     } else {
-      // 친구 정보가 없으면 채팅방 리스트로 이동
-      router.push('/chat-list');
+      // 필요한 정보가 없으면 친구 목록으로 이동
+      router.push('/friends');
     }
   }, [searchParams, router]);
 
-  if (!friendId || !friendName) {
+  if (!roomId || !friendId || !friendName) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">로딩 중...</div>
@@ -33,7 +41,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen bg-gray-50">
-      <ChatRoom roomId={`room_${friendId}`} friendName={friendName} />
+      <ChatRoom roomId={roomId} friendName={friendName} friendAddress={friendAddress} />
     </div>
   );
 }

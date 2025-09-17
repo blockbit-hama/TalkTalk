@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card } from "../../components/ui";
+import { useWallet } from "../../hooks/useWallet";
 
 interface Friend {
   id: string;
@@ -15,34 +16,56 @@ interface Friend {
 
 export default function FriendsPage() {
   const router = useRouter();
+  const { wallet } = useWallet();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [newFriendPhone, setNewFriendPhone] = useState("");
   const [newFriendName, setNewFriendName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock 친구 데이터 로드
+  // 서버에서 친구 데이터 로드
   useEffect(() => {
-    loadFriends();
-  }, []);
+    if (wallet?.addresses?.XRP) {
+      loadFriends();
+    }
+  }, [wallet]);
 
-  const loadFriends = () => {
-    // localStorage에서 친구 목록 로드
-    const savedFriends = localStorage.getItem('friends');
-    if (savedFriends) {
-      try {
-        const friendsData = JSON.parse(savedFriends);
-        setFriends(friendsData);
-      } catch (error) {
-        console.error('친구 데이터 로드 실패:', error);
+  const loadFriends = async () => {
+    try {
+      // useWallet에서 현재 사용자 주소 가져오기
+      if (!wallet?.addresses?.XRP) {
+        console.warn('지갑 정보가 아직 로드되지 않았습니다.');
+        return;
       }
+
+      const currentUserId = wallet.addresses.XRP;
+      console.log('현재 사용자 ID:', currentUserId);
+
+      // 서버에서 친구 목록 조회
+      const response = await fetch(`/api/friends?userId=${encodeURIComponent(currentUserId)}`);
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // 서버 데이터를 친구 인터페이스 형식으로 변환
+        const serverFriends = result.friends.map((relationship: any) => ({
+          id: relationship.friendId,
+          name: relationship.friendName,
+          phoneNumber: relationship.friendPhone,
+          xrplAddress: relationship.friendAddress,
+          isOnline: relationship.isOnline,
+          lastSeen: new Date(relationship.lastSeen)
+        }));
+
+        setFriends(serverFriends);
+        console.log('✅ 친구 목록 로드 완료:', serverFriends.length);
+      } else {
+        console.warn('친구 목록 조회 실패:', result.error);
+      }
+    } catch (error) {
+      console.error('친구 데이터 로드 실패:', error);
     }
   };
 
-  const saveFriends = (friendsData: Friend[]) => {
-    localStorage.setItem('friends', JSON.stringify(friendsData));
-    setFriends(friendsData);
-  };
 
   const addFriend = async () => {
     if (!newFriendPhone || !newFriendName) {
@@ -82,16 +105,33 @@ export default function FriendsPage() {
         };
       }
 
-      // 서버에 친구 관계 등록
-      const registrationResult = await registerFriendToServer(
-        'current_user',
-        friendData.id,
-        newFriendPhone
-      );
+      // useWallet에서 현재 사용자 주소 가져오기
+      if (!wallet?.addresses?.XRP) {
+        throw new Error('지갑 정보를 찾을 수 없습니다.');
+      }
 
-      if (registrationResult.success) {
-        const updatedFriends = [...friends, friendData];
-        saveFriends(updatedFriends);
+      const currentUserId = wallet.addresses.XRP;
+
+      // 서버에 친구 관계 등록
+      const friendResponse = await fetch('/api/friends', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUserId,
+          friendId: friendData.id,
+          friendName: newFriendName,
+          friendPhone: newFriendPhone,
+          friendAddress: friendData.xrplAddress
+        }),
+      });
+
+      const friendResult = await friendResponse.json();
+
+      if (friendResponse.ok && friendResult.success) {
+        // 친구 목록 새로고침
+        await loadFriends();
 
         // 폼 초기화
         setNewFriendPhone("");
@@ -100,7 +140,7 @@ export default function FriendsPage() {
 
         alert(`${newFriendName} 친구가 추가되었습니다!`);
       } else {
-        throw new Error(registrationResult.error || '친구 등록에 실패했습니다.');
+        throw new Error(friendResult.error || '친구 등록에 실패했습니다.');
       }
     } catch (error) {
       console.error('친구 추가 실패:', error);
@@ -110,16 +150,53 @@ export default function FriendsPage() {
     }
   };
 
-  const removeFriend = (friendId: string) => {
+  const removeFriend = async (friendId: string) => {
     if (confirm('정말로 친구를 삭제하시겠습니까?')) {
-      const updatedFriends = friends.filter(friend => friend.id !== friendId);
-      saveFriends(updatedFriends);
+      try {
+        // useWallet에서 현재 사용자 주소 가져오기
+        if (!wallet?.addresses?.XRP) {
+          throw new Error('지갑 정보를 찾을 수 없습니다.');
+        }
+
+        const currentUserId = wallet.addresses.XRP;
+
+        // 서버에서 친구 삭제
+        const response = await fetch(`/api/friends?userId=${encodeURIComponent(currentUserId)}&friendId=${encodeURIComponent(friendId)}`, {
+          method: 'DELETE',
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          // 친구 목록 새로고침
+          await loadFriends();
+          alert('친구가 삭제되었습니다.');
+        } else {
+          throw new Error(result.error || '친구 삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('친구 삭제 실패:', error);
+        alert(`친구 삭제에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      }
     }
   };
 
   const startChat = (friend: Friend) => {
-    // 채팅방으로 이동 (친구 정보와 함께)
-    router.push(`/chat?friendId=${friend.id}&friendName=${encodeURIComponent(friend.name)}`);
+    // useWallet에서 현재 사용자 주소 가져오기
+    if (!wallet?.addresses?.XRP) {
+      alert('지갑 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    const currentUserId = wallet.addresses.XRP;
+    const roomId = generateRoomId(currentUserId, friend.xrplAddress);
+    router.push(`/chat?roomId=${roomId}&friendId=${friend.id}&friendName=${encodeURIComponent(friend.name)}&friendAddress=${encodeURIComponent(friend.xrplAddress)}`);
+  };
+
+  // 두 사용자 간의 일관된 채팅방 ID 생성
+  const generateRoomId = (userId1: string, userId2: string) => {
+    const sortedIds = [userId1, userId2].sort();
+    return `room_${sortedIds[0]}_${sortedIds[1]}`.replace(/[^a-zA-Z0-9_]/g, '_');
   };
 
   const sendMoney = (friend: Friend) => {

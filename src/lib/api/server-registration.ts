@@ -77,22 +77,42 @@ export async function searchFriendByPhone(phoneNumber: string): Promise<{
   error?: string;
 }> {
   try {
-    // Mock 친구 검색 (실제로는 서버 API 호출)
-    console.log('전화번호로 친구 검색:', phoneNumber);
+    console.log('📞 전화번호로 친구 검색:', phoneNumber);
 
-    // 시뮬레이션된 친구 데이터
-    const mockFriend = {
-      id: `friend_${Date.now()}`,
-      name: '친구',
-      phoneNumber,
-      xrplAddress: `r${Math.random().toString(36).substr(2, 24)}`,
-      isRegistered: true
-    };
+    // URL 생성 확인
+    const searchUrl = `/api/phone-mapping?phoneNumber=${encodeURIComponent(phoneNumber)}`;
+    console.log('🔗 요청 URL:', searchUrl);
 
-    return {
-      success: true,
-      friend: mockFriend
-    };
+    // 실제 서버 API 호출
+    const response = await fetch(searchUrl);
+    console.log('📡 응답 상태:', response.status, response.statusText);
+
+    const result = await response.json();
+    console.log('📄 응답 데이터:', result);
+
+    if (response.ok && result.success) {
+      // 서버에서 찾은 친구 정보
+      const friend = {
+        id: `friend_${Date.now()}`,
+        name: '친구', // 기본 이름 (사용자가 입력한 이름으로 덮어씌워짐)
+        phoneNumber: result.phoneNumber,
+        xrplAddress: result.walletAddress,
+        isRegistered: true
+      };
+
+      console.log('✅ 친구 찾기 성공:', friend);
+      return {
+        success: true,
+        friend
+      };
+    } else {
+      // 서버에서 찾지 못한 경우
+      console.log('❌ 해당 전화번호의 사용자를 찾을 수 없습니다:', result.error);
+      return {
+        success: false,
+        error: result.error || '해당 전화번호로 등록된 사용자를 찾을 수 없습니다.'
+      };
+    }
   } catch (error) {
     console.error('친구 검색 실패:', error);
     return {

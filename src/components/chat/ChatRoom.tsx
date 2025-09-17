@@ -31,28 +31,47 @@ interface Message {
 interface ChatRoomProps {
   roomId: string;
   friendName?: string;
+  friendAddress?: string;
 }
 
-export function ChatRoom({ roomId, friendName }: ChatRoomProps) {
+export function ChatRoom({ roomId, friendName, friendAddress }: ChatRoomProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentUserId] = useState(`user_${Math.random().toString(36).substr(2, 9)}`);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [recipientAddress, setRecipientAddress] = useState<string>();
   const { wallet } = useWallet();
 
+  // 현재 사용자 ID 설정 (지갑 주소)
   useEffect(() => {
-    loadMessages();
+    if (wallet?.addresses?.XRP) {
+      setCurrentUserId(wallet.addresses.XRP);
+      console.log('현재 사용자 ID 설정:', wallet.addresses.XRP);
+    }
+  }, [wallet]);
 
-    // 폴링으로 메시지 동기화 (2초마다)
-    const pollInterval = setInterval(() => {
+  // 친구 주소를 수신자 주소로 설정
+  useEffect(() => {
+    if (friendAddress) {
+      setRecipientAddress(friendAddress);
+      console.log('수신자 주소 설정:', friendAddress);
+    }
+  }, [friendAddress]);
+
+  useEffect(() => {
+    if (currentUserId && roomId) {
       loadMessages();
-    }, 2000);
 
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, [roomId]);
+      // 폴링으로 메시지 동기화 (2초마다)
+      const pollInterval = setInterval(() => {
+        loadMessages();
+      }, 2000);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
+    }
+  }, [roomId, currentUserId]);
 
   const loadMessages = async () => {
     try {
@@ -82,7 +101,7 @@ export function ChatRoom({ roomId, friendName }: ChatRoomProps) {
   };
 
   const handleSendMessage = async (content: string, type: 'text' | 'xrp_transfer' | 'token_transfer' = 'text', metadata?: any) => {
-    if (isLoading) return;
+    if (isLoading || !currentUserId) return;
 
     setIsLoading(true);
 
@@ -90,11 +109,13 @@ export function ChatRoom({ roomId, friendName }: ChatRoomProps) {
       const messageData = {
         senderId: currentUserId,
         senderName: wallet?.name || '나',
-        senderXrpAddress: wallet?.addresses?.XRP,
+        senderXrpAddress: currentUserId, // currentUserId가 이미 XRP 주소
         type,
         content,
         metadata
       };
+
+      console.log('메시지 전송 데이터:', messageData);
 
       const response = await fetch(`/api/chat/${roomId}`, {
         method: 'POST',
