@@ -145,6 +145,18 @@ export default function Home() {
     updateEnabledAssets
   } = useWallet();
 
+  // 디버깅: 명시적 지갑 로드 시도
+  useEffect(() => {
+    console.log('📱 홈페이지에서 명시적 지갑 로드 시도');
+    console.log('📱 selectedWallet:', selectedWallet);
+    console.log('📱 isWalletLoading:', isWalletLoading);
+    console.log('📱 enabledAssets:', enabledAssets);
+
+    // 조건 없이 무조건 loadWallet 호출해보기
+    console.log('📱 무조건 loadWallet 호출');
+    loadWallet();
+  }, []); // 빈 의존성 배열로 한 번만 실행
+
   // XRPL 자산 잔액 데이터 가져오기
   const xrpBalance = useWalletBalance(
     selectedWallet?.addresses.XRP || '', 

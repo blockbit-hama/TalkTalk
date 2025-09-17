@@ -25,6 +25,15 @@ export const useWallet = () => {
     console.log('⚡ 설정 완료:', ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
   }
 
+  // 클라이언트 사이드에서 localStorage 직접 확인 및 loadEnabledAssets 호출
+  if (typeof window !== 'undefined') {
+    console.log('🖥️ 클라이언트 사이드 감지, localStorage 직접 확인');
+
+    // useEffect 대신 여기서 직접 호출
+    console.log('🔄 useEffect 우회하여 loadEnabledAssets 직접 호출');
+    loadEnabledAssets();
+  }
+
   // 각 브라우저별 고유 지갑 ID 생성
   const getBrowserWalletId = () => {
     let browserId = localStorage.getItem('browserWalletId');
@@ -205,16 +214,49 @@ export const useWallet = () => {
     try {
       console.log('🚀 활성화된 자산 로드 시작');
 
-      // 항상 기본값으로 설정 (개발 단계에서는 매번 초기화)
-      console.log('✅ XRPL 기본 자산으로 강제 설정:', ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
-      setEnabledAssets(ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
-      const defaultAssetsData = ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS.map(symbol => ({ symbol }));
-      localStorage.setItem('enabledAssets', JSON.stringify(defaultAssetsData));
+      // 먼저 localStorage에서 기존 설정 읽어오기
+      const storedAssets = localStorage.getItem(ASSET_CONSTANTS.STORAGE_KEY);
+      console.log('💾 localStorage에서 읽은 데이터:', storedAssets);
 
-      console.log('📊 최종 활성화된 자산:', ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
+      if (storedAssets) {
+        try {
+          const parsedAssets = JSON.parse(storedAssets);
+          console.log('📊 파싱된 자산 데이터:', parsedAssets);
+
+          // 배열 형태인지 확인하고 처리
+          let assetsArray = [];
+          if (Array.isArray(parsedAssets)) {
+            // 새 형식: [{ symbol: 'XRP' }, { symbol: 'USD' }]
+            assetsArray = parsedAssets.map(item => item.symbol || item).filter(Boolean);
+          } else {
+            console.log('⚠️ 예상치 못한 자산 데이터 형식:', parsedAssets);
+            assetsArray = ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS;
+          }
+
+          console.log('✅ 기존 설정 로드됨:', assetsArray);
+          setEnabledAssets(assetsArray);
+
+        } catch (parseError) {
+          console.error('❌ 자산 데이터 파싱 실패:', parseError);
+          console.log('🔄 기본값으로 초기화');
+          setEnabledAssets(ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
+        }
+      } else {
+        // localStorage에 데이터가 없으면 기본값으로 초기화
+        console.log('📦 localStorage 비어있음, 기본값으로 초기화');
+        console.log('✅ XRPL 기본 자산으로 설정:', ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
+        setEnabledAssets(ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
+
+        // 기본값을 localStorage에 저장
+        const defaultAssetsData = ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS.map(symbol => ({ symbol }));
+        localStorage.setItem(ASSET_CONSTANTS.STORAGE_KEY, JSON.stringify(defaultAssetsData));
+        console.log('💾 기본값을 localStorage에 저장 완료');
+      }
+
+      console.log('📊 최종 활성화된 자산 로드 완료');
 
     } catch (error) {
-      console.error('활성화된 자산 로드 실패:', error);
+      console.error('❌ 활성화된 자산 로드 실패:', error);
       setEnabledAssets(ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
     }
   };
