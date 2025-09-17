@@ -56,17 +56,18 @@ const saveToFile = (data: Map<string, FriendRelationship[]>) => {
   }
 };
 
-// KV 연결 상태 확인
-const isKVAvailable = () => {
-  return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+// Redis 연결 상태 확인 (Vercel KV 또는 Upstash Redis)
+const isRedisAvailable = () => {
+  return (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
+         (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 };
 
 // 친구 관계 저장 함수
 async function saveFriendRelationships(userId: string, relationships: FriendRelationship[]): Promise<void> {
   try {
-    if (isKVAvailable()) {
+    if (isRedisAvailable()) {
       await kv.set(`friends:${userId}`, relationships);
-      console.log(`✅ KV에 친구 관계 저장: ${userId} (${relationships.length}개)`);
+      console.log(`✅ Redis에 친구 관계 저장: ${userId} (${relationships.length}개)`);
     } else {
       // 파일에서 기존 데이터 로드
       const allData = loadFromFile();
@@ -86,10 +87,10 @@ async function saveFriendRelationships(userId: string, relationships: FriendRela
 // 친구 관계 조회 함수
 async function getFriendRelationships(userId: string): Promise<FriendRelationship[]> {
   try {
-    if (isKVAvailable()) {
+    if (isRedisAvailable()) {
       const relationships = await kv.get<FriendRelationship[]>(`friends:${userId}`);
       if (relationships) {
-        console.log(`📞 KV에서 친구 관계 조회 성공: ${userId} (${relationships.length}개)`);
+        console.log(`📞 Redis에서 친구 관계 조회 성공: ${userId} (${relationships.length}개)`);
       }
       return relationships || [];
     } else {
@@ -111,7 +112,7 @@ async function getFriendRelationships(userId: string): Promise<FriendRelationshi
 // 모든 친구 관계 조회 (디버그용)
 async function getAllFriendRelationships(): Promise<Array<[string, FriendRelationship[]]>> {
   try {
-    if (isKVAvailable()) {
+    if (isRedisAvailable()) {
       const keys = await kv.keys('friends:*');
       const relationships: Array<[string, FriendRelationship[]]> = [];
       for (const key of keys) {
@@ -154,13 +155,13 @@ export async function GET(request: NextRequest) {
     const allRelationships = await getAllFriendRelationships();
     console.log(`📊 전체 사용자 수: ${allRelationships.length}, 요청 사용자: ${userId}`);
     console.log('📞 친구 목록 조회:', { userId, friendCount: userFriends.length });
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
+    console.log('💾 저장소 타입:', isRedisAvailable() ? 'Redis' : 'File');
 
     return NextResponse.json({
       success: true,
       friends: userFriends,
       count: userFriends.length,
-      storage: isKVAvailable() ? 'KV' : 'File'
+      storage: isRedisAvailable() ? 'Redis' : 'File'
     });
 
   } catch (error) {
@@ -287,13 +288,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ 친구 관계 추가 완료:', newFriendship);
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'File');
+    console.log('💾 저장소 타입:', isRedisAvailable() ? 'Redis' : 'File');
 
     return NextResponse.json({
       success: true,
       message: '친구가 성공적으로 추가되었습니다.',
       friend: newFriendship,
-      storage: isKVAvailable() ? 'KV' : 'File'
+      storage: isRedisAvailable() ? 'Redis' : 'File'
     });
 
   } catch (error) {
@@ -336,7 +337,7 @@ export async function DELETE(request: NextRequest) {
     await saveFriendRelationships(userId, updatedFriends);
 
     console.log('🗑️ 친구 관계 삭제 완료:', { userId, friendId });
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'File');
+    console.log('💾 저장소 타입:', isRedisAvailable() ? 'Redis' : 'File');
 
     return NextResponse.json({
       success: true,
@@ -370,7 +371,7 @@ export async function PATCH(request: NextRequest) {
         success: true,
         totalUsers: allRelationships.length,
         relationships: formattedRelationships,
-        storage: isKVAvailable() ? 'KV' : 'File'
+        storage: isRedisAvailable() ? 'Redis' : 'File'
       });
     }
 
