@@ -48,11 +48,17 @@ export default function FriendsPage() {
       }
 
       const currentUserId = wallet.addresses.XRP;
-      console.log('현재 사용자 ID:', currentUserId);
+      console.log(`[${new Date().toLocaleTimeString()}] 친구 목록 조회 시작:`, currentUserId);
 
       // 서버에서 친구 목록 조회
       const response = await fetch(`/api/friends?userId=${encodeURIComponent(currentUserId)}`);
       const result = await response.json();
+
+      console.log(`[${new Date().toLocaleTimeString()}] 서버 응답:`, {
+        status: response.status,
+        storage: result.storage,
+        count: result.count
+      });
 
       if (response.ok && result.success) {
         // 서버 데이터를 친구 인터페이스 형식으로 변환
@@ -65,8 +71,16 @@ export default function FriendsPage() {
           lastSeen: new Date(relationship.lastSeen)
         }));
 
+        // 이전 친구 수와 비교
+        if (friends.length !== serverFriends.length) {
+          console.log(`📊 친구 목록 변경: ${friends.length} → ${serverFriends.length}`);
+          if (serverFriends.length === 0 && friends.length > 0) {
+            console.error('⚠️ 경고: 친구 목록이 갑자기 비워졌습니다!');
+          }
+        }
+
         setFriends(serverFriends);
-        console.log('✅ 친구 목록 로드 완료:', serverFriends.length);
+        console.log(`✅ 친구 목록 로드 완료: ${serverFriends.length}명`);
       } else {
         console.warn('친구 목록 조회 실패:', result.error);
       }

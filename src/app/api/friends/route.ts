@@ -94,6 +94,9 @@ export async function GET(request: NextRequest) {
     // 해당 사용자의 친구 목록 조회 (KV 또는 메모리)
     const userFriends = await getFriendRelationships(userId);
 
+    // 디버깅: 전체 메모리 상태 확인
+    const allRelationships = await getAllFriendRelationships();
+    console.log(`📊 전체 사용자 수: ${allRelationships.length}, 요청 사용자: ${userId}`);
     console.log('📞 친구 목록 조회:', { userId, friendCount: userFriends.length });
     console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
 
