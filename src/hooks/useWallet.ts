@@ -25,14 +25,7 @@ export const useWallet = () => {
     console.log('⚡ 설정 완료:', ASSET_CONSTANTS.DEFAULT_ENABLED_ASSETS);
   }
 
-  // 클라이언트 사이드에서 localStorage 직접 확인 및 loadEnabledAssets 호출
-  if (typeof window !== 'undefined') {
-    console.log('🖥️ 클라이언트 사이드 감지, localStorage 직접 확인');
-
-    // useEffect 대신 여기서 직접 호출
-    console.log('🔄 useEffect 우회하여 loadEnabledAssets 직접 호출');
-    loadEnabledAssets();
-  }
+  // 클라이언트 사이드에서 localStorage 직접 확인은 useEffect에서 처리
 
   // 각 브라우저별 고유 지갑 ID 생성
   const getBrowserWalletId = () => {

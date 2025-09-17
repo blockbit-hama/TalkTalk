@@ -24,25 +24,44 @@ const USDIcon = ({ size = 72 }: { size?: number }) => (
     width: size,
     height: size,
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #002868 0%, #BF0A30 50%, #FFFFFF 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(191, 10, 48, 0.3)',
     border: '3px solid rgba(255, 255, 255, 0.2)',
-    position: 'relative'
+    overflow: 'hidden'
   }}>
-    <div style={{
-      position: 'absolute',
-      inset: '8px',
-      borderRadius: '50%',
-      background: '#002868',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <span style={{ color: 'white', fontWeight: 'bold', fontSize: size * 0.25 }}>🇺🇸</span>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
+      {/* 미국 국기 패턴 */}
+      <rect width="72" height="5.54" fill="#B22234"/>
+      <rect y="5.54" width="72" height="5.54" fill="white"/>
+      <rect y="11.08" width="72" height="5.54" fill="#B22234"/>
+      <rect y="16.62" width="72" height="5.54" fill="white"/>
+      <rect y="22.16" width="72" height="5.54" fill="#B22234"/>
+      <rect y="27.7" width="72" height="5.54" fill="white"/>
+      <rect y="33.24" width="72" height="5.54" fill="#B22234"/>
+      <rect y="38.78" width="72" height="5.54" fill="white"/>
+      <rect y="44.32" width="72" height="5.54" fill="#B22234"/>
+      <rect y="49.86" width="72" height="5.54" fill="white"/>
+      <rect y="55.4" width="72" height="5.54" fill="#B22234"/>
+      <rect y="60.94" width="72" height="5.54" fill="white"/>
+      <rect y="66.48" width="72" height="5.54" fill="#B22234"/>
+      {/* 파란색 칸톤 */}
+      <rect width="29" height="39" fill="#3C3B6E"/>
+      {/* 별 패턴 (간단하게 흰색 점들로) */}
+      <circle cx="4.8" cy="4.8" r="1.2" fill="white"/>
+      <circle cx="12" cy="4.8" r="1.2" fill="white"/>
+      <circle cx="19.2" cy="4.8" r="1.2" fill="white"/>
+      <circle cx="8.4" cy="9.6" r="1.2" fill="white"/>
+      <circle cx="15.6" cy="9.6" r="1.2" fill="white"/>
+      <circle cx="22.8" cy="9.6" r="1.2" fill="white"/>
+      <circle cx="4.8" cy="14.4" r="1.2" fill="white"/>
+      <circle cx="12" cy="14.4" r="1.2" fill="white"/>
+      <circle cx="19.2" cy="14.4" r="1.2" fill="white"/>
+      <circle cx="8.4" cy="19.2" r="1.2" fill="white"/>
+      <circle cx="15.6" cy="19.2" r="1.2" fill="white"/>
+      <circle cx="22.8" cy="19.2" r="1.2" fill="white"/>
+    </svg>
   </div>
 );
 
@@ -51,25 +70,34 @@ const CNYIcon = ({ size = 72 }: { size?: number }) => (
     width: size,
     height: size,
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #DE2910 0%, #FFDE00 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(222, 41, 16, 0.3)',
     border: '3px solid rgba(255, 255, 255, 0.2)',
-    position: 'relative'
+    overflow: 'hidden'
   }}>
-    <div style={{
-      position: 'absolute',
-      inset: '8px',
-      borderRadius: '50%',
-      background: '#DE2910',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <span style={{ color: '#FFDE00', fontWeight: 'bold', fontSize: size * 0.25 }}>🇨🇳</span>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
+      {/* 중국 국기 배경 */}
+      <rect width="72" height="72" fill="#DE2910"/>
+      {/* 큰 별 */}
+      <g transform="translate(14.4, 14.4)">
+        <polygon points="0,-7.2 2.16,-2.22 7.56,-2.22 3.7,1.17 5.86,6.15 0,2.75 -5.86,6.15 -3.7,1.17 -7.56,-2.22 -2.16,-2.22" fill="#FFDE00"/>
+      </g>
+      {/* 작은 별들 */}
+      <g transform="translate(28.8, 10.8) rotate(0)">
+        <polygon points="0,-2.4 0.72,-0.74 2.52,-0.74 1.26,0.39 1.98,2.05 0,0.92 -1.98,2.05 -1.26,0.39 -2.52,-0.74 -0.72,-0.74" fill="#FFDE00"/>
+      </g>
+      <g transform="translate(32.4, 18) rotate(15)">
+        <polygon points="0,-2.4 0.72,-0.74 2.52,-0.74 1.26,0.39 1.98,2.05 0,0.92 -1.98,2.05 -1.26,0.39 -2.52,-0.74 -0.72,-0.74" fill="#FFDE00"/>
+      </g>
+      <g transform="translate(30.6, 25.2) rotate(30)">
+        <polygon points="0,-2.4 0.72,-0.74 2.52,-0.74 1.26,0.39 1.98,2.05 0,0.92 -1.98,2.05 -1.26,0.39 -2.52,-0.74 -0.72,-0.74" fill="#FFDE00"/>
+      </g>
+      <g transform="translate(25.2, 30.6) rotate(45)">
+        <polygon points="0,-2.4 0.72,-0.74 2.52,-0.74 1.26,0.39 1.98,2.05 0,0.92 -1.98,2.05 -1.26,0.39 -2.52,-0.74 -0.72,-0.74" fill="#FFDE00"/>
+      </g>
+    </svg>
   </div>
 );
 
@@ -78,25 +106,85 @@ const EURIcon = ({ size = 72 }: { size?: number }) => (
     width: size,
     height: size,
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #003399 0%, #FFCC00 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(0, 51, 153, 0.3)',
     border: '3px solid rgba(255, 255, 255, 0.2)',
-    position: 'relative'
+    overflow: 'hidden'
   }}>
-    <div style={{
-      position: 'absolute',
-      inset: '8px',
-      borderRadius: '50%',
-      background: '#003399',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <span style={{ color: '#FFCC00', fontWeight: 'bold', fontSize: size * 0.25 }}>🇪🇺</span>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
+      {/* EU 국기 파란색 배경 */}
+      <rect width="72" height="72" fill="#003399"/>
+      {/* 12개 별들을 원형으로 배치 */}
+      <g transform="translate(36, 36)">
+        <g transform="rotate(0)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(30)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(60)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(90)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(120)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(150)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(180)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(210)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(240)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(270)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(300)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+        <g transform="rotate(330)">
+          <polygon points="0,-20 1.76,-18.48 3.09,-16.18 1.76,-13.88 0,-12.36 -1.76,-13.88 -3.09,-16.18 -1.76,-18.48" fill="#FFCC00"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+);
+
+const TSTIcon = ({ size = 72 }: { size?: number }) => (
+  <div style={{
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(128, 0, 128, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden'
+  }}>
+    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
+      {/* 테스트 토큰 배경 - 그라데이션 */}
+      <defs>
+        <linearGradient id="testGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#800080"/>
+          <stop offset="50%" stopColor="#9932CC"/>
+          <stop offset="100%" stopColor="#4B0082"/>
+        </linearGradient>
+      </defs>
+      <circle cx="36" cy="36" r="36" fill="url(#testGradient)"/>
+      {/* TEST 문자 */}
+      <text x="36" y="28" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">TEST</text>
+      <text x="36" y="48" textAnchor="middle" fill="white" fontSize="8" fontWeight="normal">TOKEN</text>
+    </svg>
   </div>
 );
 
@@ -218,6 +306,21 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
                 <span className="balance-card-name">중국 위안 (CNY)</span>
                 <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
                   0.00 CNY
+                </div>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                  $0.00
+                </div>
+              </div>
+            </div>
+          )}
+
+          {enabledAssets.includes('TST') && (
+            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
+              <TSTIcon />
+              <div className="balance-card-inner">
+                <span className="balance-card-name">테스트 토큰 (TST)</span>
+                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                  0.00 TST
                 </div>
                 <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
                   $0.00
