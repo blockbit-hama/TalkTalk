@@ -14,6 +14,10 @@ export const useWallet = () => {
 
   console.log('🔍 현재 상태:', { wallet, isLoading, enabledAssets });
 
+  // useEffect 실행 확인을 위한 추가 로그
+  console.log('🔥 useEffect 정의 전 - React 렌더링 체크');
+  console.log('🔥 useEffect는', useEffect);
+
   // enabledAssets가 비어있으면 바로 기본값으로 설정
   if (enabledAssets.length === 0) {
     console.log('⚡ enabledAssets 비어있음, 바로 기본값 설정');
@@ -228,18 +232,21 @@ export const useWallet = () => {
   };
 
   // 초기 로딩
+  console.log('🔥 useEffect 정의 중...', { window: typeof window, isClient: typeof window !== 'undefined' });
+
+  // 클라이언트 사이드에서만 실행되는 useEffect
   useEffect(() => {
+    console.log('🚀🚀🚀 useWallet useEffect 실행됨!!! 🚀🚀🚀');
     console.log('🚀 useWallet useEffect 시작, window:', typeof window);
-    try {
-      if (typeof window !== 'undefined') {
-        console.log('🚀 useWallet 클라이언트 사이드 초기화 시작');
-        loadWallet();
-        loadEnabledAssets();
-      }
-    } catch (error) {
-      console.error('❌ useWallet useEffect 에러:', error);
-    }
-  }, []);
+
+    // 클라이언트 사이드 체크 없이 바로 실행
+    console.log('🚀 클라이언트 사이드 확정, 지갑 로딩 시작');
+    console.log('📞 loadWallet 함수 호출 시작');
+    loadWallet();
+    console.log('📞 loadEnabledAssets 함수 호출 시작');
+    loadEnabledAssets();
+    console.log('✅ useWallet 초기화 함수 호출 완료');
+  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
 
   // 지갑 새로고침
   const refreshWallet = () => {
