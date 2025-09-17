@@ -13,6 +13,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { regenerateAllWalletPrivateKeys, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
 import { xrplFaucet } from "../lib/xrpl/xrpl-faucet";
 import { xrplClient } from "../lib/xrpl/xrpl-client";
+import dynamic from 'next/dynamic';
+
+// 클라이언트 전용 컴포넌트를 동적으로 로드
+const ClientOnlyAssetDisplay = dynamic(() => import('../components/ClientOnlyAssetDisplay'), {
+  ssr: false,
+  loading: () => <div style={{ color: 'white', padding: '20px' }}>자산 로딩 중...</div>
+});
 
 // 더 세련된 코인 SVG 아이콘들 (gradient, 입체감, 라인 등)
 const XrpIcon = ({ size = 54 }: { size?: number }) => (
@@ -764,15 +771,24 @@ export default function Home() {
           />
         </div>
         
-        {/* XRPL 자산 잔액 리스트 */}
-        <div className="balance-list">
+        {/* 클라이언트 전용 자산 표시 컴포넌트 */}
+        <ClientOnlyAssetDisplay
+          selectedWallet={selectedWallet}
+          xrpBalance={xrpBalance}
+        />
+
+        {/* 기존 자산 리스트 (디버깅용으로 임시 유지) */}
+        <div className="balance-list" style={{ opacity: 0.5, border: '1px dashed #666' }}>
+          <div style={{ color: '#666', fontSize: '12px', padding: '5px' }}>
+            기존 방식 (디버깅용): localEnabledAssets={JSON.stringify(localEnabledAssets)}, enabledAssets={JSON.stringify(enabledAssets)}
+          </div>
           {selectedWallet && (
             <>
               {selectedWallet.addresses.XRP && (localEnabledAssets.length > 0 ? localEnabledAssets : enabledAssets).includes('XRP') && (
                 <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
                   <XrpIcon size={72} />
                   <div className="balance-card-inner">
-                    <span className="balance-card-name">XRP</span>
+                    <span className="balance-card-name">XRP (기존방식)</span>
                     <span className="balance-card-usd" style={{ color: xrpBalance.data?.changeColor || '#6FCF97' }}>
                       {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.price ? `${xrpBalance.data.price} ${xrpBalance.data.change}` : '$0.50 0.00%'}
                     </span>
