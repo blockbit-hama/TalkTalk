@@ -177,15 +177,15 @@ const KRWIcon = ({ size = 72 }: { size?: number }) => (
 
       {/* 태극 문양 - 더 크게 */}
       <g transform="translate(36, 36)">
-        {/* 빨간색 반원 (위쪽, 양) */}
-        <path d="M -26,0 A 26,26 0 0,1 26,0 Z" fill="#CD201F"/>
+        {/* 파란색 반원 (위쪽, 음) */}
+        <path d="M -26,0 A 26,26 0 0,1 26,0 Z" fill="#0047A0"/>
 
-        {/* 파란색 반원 (아래쪽, 음) */}
-        <path d="M -26,0 A 26,26 0 0,0 26,0 Z" fill="#0047A0"/>
+        {/* 빨간색 반원 (아래쪽, 양) */}
+        <path d="M -26,0 A 26,26 0 0,0 26,0 Z" fill="#CD201F"/>
 
         {/* 중앙의 작은 원들 - 올바른 위치 */}
-        <circle cx="-13" cy="0" r="13" fill="#0047A0"/>
-        <circle cx="13" cy="0" r="13" fill="#CD201F"/>
+        <circle cx="-13" cy="0" r="13" fill="#CD201F"/>
+        <circle cx="13" cy="0" r="13" fill="#0047A0"/>
       </g>
     </svg>
   </div>
