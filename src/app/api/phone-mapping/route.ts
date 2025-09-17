@@ -138,36 +138,59 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const phoneNumber = searchParams.get('phoneNumber');
+    const walletAddress = searchParams.get('walletAddress');
 
-    console.log('📞 전화번호 조회 요청:', phoneNumber);
+    console.log('📞 조회 요청:', { phoneNumber, walletAddress });
 
-    if (!phoneNumber) {
+    // 전화번호 또는 지갑주소 중 하나는 필요
+    if (!phoneNumber && !walletAddress) {
       return NextResponse.json(
-        { error: '전화번호가 필요합니다.' },
+        { error: '전화번호 또는 지갑주소가 필요합니다.' },
         { status: 400 }
       );
     }
 
-    const cleanPhoneNumber = phoneNumber.replace(/[-\s]/g, '');
-    console.log('🧹 정리된 전화번호:', cleanPhoneNumber);
-
     // 현재 저장된 매핑들 확인
     const allMappings = await getAllMappings();
-    console.log('📊 현재 저장된 매핑들:', allMappings.map(([phone]) => phone));
     console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
 
-    // KV 또는 메모리에서 조회
-    const mapping = await getPhoneMapping(cleanPhoneNumber);
+    let mapping = null;
 
-    if (!mapping) {
-      console.log('❌ 전화번호를 찾을 수 없음:', cleanPhoneNumber);
-      return NextResponse.json(
-        { error: '해당 전화번호를 찾을 수 없습니다.' },
-        { status: 404 }
-      );
+    if (phoneNumber) {
+      // 전화번호로 조회
+      const cleanPhoneNumber = phoneNumber.replace(/[-\s]/g, '');
+      console.log('🧹 정리된 전화번호:', cleanPhoneNumber);
+      mapping = await getPhoneMapping(cleanPhoneNumber);
+
+      if (!mapping) {
+        console.log('❌ 전화번호를 찾을 수 없음:', cleanPhoneNumber);
+        return NextResponse.json(
+          { error: '해당 전화번호를 찾을 수 없습니다.' },
+          { status: 404 }
+        );
+      }
+    } else if (walletAddress) {
+      // 지갑주소로 역조회
+      console.log('🔍 지갑주소로 역조회:', walletAddress);
+
+      // 모든 매핑에서 지갑주소로 찾기
+      for (const [phone, phoneMapping] of allMappings) {
+        if (phoneMapping.walletAddress === walletAddress) {
+          mapping = phoneMapping;
+          break;
+        }
+      }
+
+      if (!mapping) {
+        console.log('❌ 지갑주소를 찾을 수 없음:', walletAddress);
+        return NextResponse.json(
+          { error: '해당 지갑주소를 찾을 수 없습니다.' },
+          { status: 404 }
+        );
+      }
     }
 
-    console.log('📞 전화번호 조회 성공:', mapping);
+    console.log('📞 조회 성공:', mapping);
 
     return NextResponse.json({
       success: true,
@@ -177,7 +200,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ 전화번호 조회 오류:', error);
+    console.error('❌ 조회 오류:', error);
     return NextResponse.json(
       { error: '서버 오류가 발생했습니다.' },
       { status: 500 }

@@ -167,9 +167,52 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     };
 
-    // 친구 목록에 추가
+    // 1. 현재 사용자를 친구 목록에 추가
     userFriends.push(newFriendship);
     await saveFriendRelationships(userId, userFriends);
+
+    // 2. 상대방에게도 나를 친구로 추가 (양방향 관계 생성)
+    try {
+      // 전화번호 매핑 API에서 현재 사용자의 전화번호 찾기
+      const userPhoneResponse = await fetch(`http://localhost:9001/api/phone-mapping?walletAddress=${encodeURIComponent(userId)}`);
+      let currentUserPhone = '알 수 없음';
+      let currentUserName = '친구';
+
+      if (userPhoneResponse.ok) {
+        const phoneData = await userPhoneResponse.json();
+        if (phoneData.success) {
+          currentUserPhone = phoneData.phoneNumber;
+        }
+      }
+
+      // 상대방의 친구 목록에 현재 사용자를 추가
+      const friendFriends = await getFriendRelationships(friendAddress);
+
+      // 상대방 친구 목록에서 나를 이미 친구로 가지고 있는지 확인
+      const existingReverseFriend = friendFriends.find(friend =>
+        friend.friendId === userId || friend.friendPhone === currentUserPhone
+      );
+
+      if (!existingReverseFriend) {
+        const reverseFriendship: FriendRelationship = {
+          userId: friendAddress, // 상대방이 주인
+          friendId: userId, // 나를 친구로
+          friendName: currentUserName, // 상대방이 나를 부를 이름 (기본값)
+          friendPhone: currentUserPhone,
+          friendAddress: userId,
+          isOnline: true,
+          lastSeen: new Date(),
+          createdAt: new Date().toISOString()
+        };
+
+        friendFriends.push(reverseFriendship);
+        await saveFriendRelationships(friendAddress, friendFriends);
+
+        console.log('🔄 양방향 친구 관계 생성:', reverseFriendship);
+      }
+    } catch (error) {
+      console.error('양방향 친구 관계 생성 실패 (단방향으로 진행):', error);
+    }
 
     console.log('✅ 친구 관계 추가 완료:', newFriendship);
     console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
