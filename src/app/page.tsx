@@ -145,16 +145,45 @@ export default function Home() {
     updateEnabledAssets
   } = useWallet();
 
-  // 디버깅: 명시적 지갑 로드 시도
+  // 홈페이지에서 직접 localStorage에서 enabledAssets 읽기
+  const [localEnabledAssets, setLocalEnabledAssets] = useState<string[]>([]);
+
   useEffect(() => {
-    console.log('📱 홈페이지에서 명시적 지갑 로드 시도');
+    console.log('📱 홈페이지 useEffect 실행됨');
     console.log('📱 selectedWallet:', selectedWallet);
     console.log('📱 isWalletLoading:', isWalletLoading);
-    console.log('📱 enabledAssets:', enabledAssets);
+    console.log('📱 useWallet에서 가져온 enabledAssets:', enabledAssets);
 
-    // 조건 없이 무조건 loadWallet 호출해보기
-    console.log('📱 무조건 loadWallet 호출');
-    loadWallet();
+    // 클라이언트 사이드에서 직접 localStorage 읽기
+    if (typeof window !== 'undefined') {
+      console.log('🖥️ 클라이언트 사이드에서 localStorage 직접 읽기');
+
+      const storedAssets = localStorage.getItem('enabledAssets');
+      console.log('💾 localStorage에서 읽은 enabledAssets:', storedAssets);
+
+      if (storedAssets) {
+        try {
+          const parsedAssets = JSON.parse(storedAssets);
+          const assetsArray = parsedAssets.map((item: any) => item.symbol || item).filter(Boolean);
+          console.log('✅ 파싱된 enabledAssets:', assetsArray);
+          setLocalEnabledAssets(assetsArray);
+        } catch (error) {
+          console.error('❌ enabledAssets 파싱 실패:', error);
+          setLocalEnabledAssets(['XRP', 'USD', 'CNY', 'EUR', 'TST']);
+        }
+      } else {
+        console.log('📦 localStorage에 enabledAssets 없음, 기본값 설정');
+        setLocalEnabledAssets(['XRP', 'USD', 'CNY', 'EUR', 'TST']);
+        // 기본값을 localStorage에 저장
+        const defaultData = ['XRP', 'USD', 'CNY', 'EUR', 'TST'].map(symbol => ({ symbol }));
+        localStorage.setItem('enabledAssets', JSON.stringify(defaultData));
+        console.log('💾 기본값을 localStorage에 저장 완료');
+      }
+
+      // 지갑도 함께 로드
+      console.log('📞 loadWallet 호출');
+      loadWallet();
+    }
   }, []); // 빈 의존성 배열로 한 번만 실행
 
   // XRPL 자산 잔액 데이터 가져오기
@@ -169,19 +198,24 @@ export default function Home() {
     console.log('잔액 캐시 무효화 완료');
   };
 
-  // 총 달러 금액 계산 (XRPL 자산들의 합계)
+  // 총 달러 금액 계산 (XRPL 자산들의 합계) - localEnabledAssets 사용
   const calculateTotalUSD = () => {
-    if (!selectedWallet || !enabledAssets.length) return 0;
-    
+    // localEnabledAssets를 우선 사용, 없으면 enabledAssets 사용
+    const assetsToUse = localEnabledAssets.length > 0 ? localEnabledAssets : enabledAssets;
+
+    console.log('💰 계산에 사용할 자산:', assetsToUse);
+
+    if (!selectedWallet || !assetsToUse.length) return 0;
+
     let total = 0;
-    
+
     // XRPL 자산들의 USD 가치 합계
-    if (enabledAssets.includes('XRP') && xrpBalance.data) {
+    if (assetsToUse.includes('XRP') && xrpBalance.data) {
       const xrpValue = parseFloat(xrpBalance.data.usdValue.replace('$', '').replace(',', ''));
       total += xrpValue;
     }
-    
-    
+
+
     return total;
   };
 
@@ -734,7 +768,7 @@ export default function Home() {
         <div className="balance-list">
           {selectedWallet && (
             <>
-              {selectedWallet.addresses.XRP && enabledAssets.includes('XRP') && (
+              {selectedWallet.addresses.XRP && (localEnabledAssets.length > 0 ? localEnabledAssets : enabledAssets).includes('XRP') && (
                 <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
                   <XrpIcon size={72} />
                   <div className="balance-card-inner">
