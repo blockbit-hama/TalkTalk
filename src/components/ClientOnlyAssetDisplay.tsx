@@ -159,7 +159,7 @@ const EURIcon = ({ size = 72 }: { size?: number }) => (
   </div>
 );
 
-const TSTIcon = ({ size = 72 }: { size?: number }) => (
+const KRWIcon = ({ size = 72 }: { size?: number }) => (
   <div style={{
     width: size,
     height: size,
@@ -167,23 +167,57 @@ const TSTIcon = ({ size = 72 }: { size?: number }) => (
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 20px rgba(128, 0, 128, 0.3)',
+    boxShadow: '0 4px 20px rgba(205, 32, 31, 0.3)',
     border: '3px solid rgba(255, 255, 255, 0.2)',
     overflow: 'hidden'
   }}>
     <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
-      {/* 테스트 토큰 배경 - 그라데이션 */}
-      <defs>
-        <linearGradient id="testGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#800080"/>
-          <stop offset="50%" stopColor="#9932CC"/>
-          <stop offset="100%" stopColor="#4B0082"/>
-        </linearGradient>
-      </defs>
-      <circle cx="36" cy="36" r="36" fill="url(#testGradient)"/>
-      {/* TEST 문자 */}
-      <text x="36" y="28" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">TEST</text>
-      <text x="36" y="48" textAnchor="middle" fill="white" fontSize="8" fontWeight="normal">TOKEN</text>
+      {/* 한국 국기 배경 */}
+      <rect width="72" height="72" fill="white"/>
+
+      {/* 태극 심볼 */}
+      <g transform="translate(36, 36)">
+        {/* 빨간색 태극 */}
+        <path d="M 0,-12 A 12,12 0 0,1 0,0 A 6,6 0 0,1 0,-12" fill="#CD201F"/>
+        {/* 파란색 태극 */}
+        <path d="M 0,0 A 12,12 0 0,1 0,12 A 6,6 0 0,1 0,0" fill="#0047A0"/>
+        <circle cx="0" cy="-6" r="6" fill="#0047A0"/>
+        <circle cx="0" cy="6" r="6" fill="#CD201F"/>
+      </g>
+
+      {/* 건괘 (우상단) */}
+      <g transform="translate(50, 22)">
+        <rect x="0" y="0" width="12" height="2" fill="black"/>
+        <rect x="0" y="4" width="12" height="2" fill="black"/>
+        <rect x="0" y="8" width="12" height="2" fill="black"/>
+      </g>
+
+      {/* 곤괘 (좌하단) */}
+      <g transform="translate(10, 48)">
+        <rect x="0" y="0" width="4" height="2" fill="black"/>
+        <rect x="8" y="0" width="4" height="2" fill="black"/>
+        <rect x="0" y="4" width="4" height="2" fill="black"/>
+        <rect x="8" y="4" width="4" height="2" fill="black"/>
+        <rect x="0" y="8" width="4" height="2" fill="black"/>
+        <rect x="8" y="8" width="4" height="2" fill="black"/>
+      </g>
+
+      {/* 감괘 (좌상단) */}
+      <g transform="translate(10, 22)">
+        <rect x="0" y="0" width="4" height="2" fill="black"/>
+        <rect x="8" y="0" width="4" height="2" fill="black"/>
+        <rect x="0" y="4" width="12" height="2" fill="black"/>
+        <rect x="0" y="8" width="4" height="2" fill="black"/>
+        <rect x="8" y="8" width="4" height="2" fill="black"/>
+      </g>
+
+      {/* 리괘 (우하단) */}
+      <g transform="translate(50, 48)">
+        <rect x="0" y="0" width="12" height="2" fill="black"/>
+        <rect x="0" y="4" width="4" height="2" fill="black"/>
+        <rect x="8" y="4" width="4" height="2" fill="black"/>
+        <rect x="0" y="8" width="12" height="2" fill="black"/>
+      </g>
     </svg>
   </div>
 );
@@ -199,73 +233,66 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
 
   // 클라이언트 사이드에서만 실행
   useEffect(() => {
-    console.log('🎯 ClientOnlyAssetDisplay 컴포넌트가 마운트됨');
     setIsClient(true);
 
     if (typeof window !== 'undefined') {
-      console.log('🖥️ 클라이언트 사이드 확인, localStorage 읽기 시작');
-
       try {
         const storedAssets = localStorage.getItem('enabledAssets');
-        console.log('💾 localStorage에서 읽은 데이터:', storedAssets);
 
         if (storedAssets) {
           const parsedAssets = JSON.parse(storedAssets);
           const assetsArray = parsedAssets.map((item: any) => item.symbol || item).filter(Boolean);
-          console.log('✅ 파싱된 enabledAssets:', assetsArray);
           setEnabledAssets(assetsArray);
         } else {
-          console.log('📦 기본값 설정');
-          const defaultAssets = ['XRP', 'USD', 'CNY', 'EUR', 'TST'];
+          const defaultAssets = ['XRP', 'KRW', 'USD', 'CNY', 'EUR'];
           setEnabledAssets(defaultAssets);
           // localStorage에 저장
           const defaultData = defaultAssets.map(symbol => ({ symbol }));
           localStorage.setItem('enabledAssets', JSON.stringify(defaultData));
-          console.log('💾 기본값 저장 완료');
         }
       } catch (error) {
-        console.error('❌ localStorage 처리 실패:', error);
-        setEnabledAssets(['XRP', 'USD', 'CNY', 'EUR', 'TST']);
+        setEnabledAssets(['XRP', 'KRW', 'USD', 'CNY', 'EUR']);
       }
     }
   }, []);
 
   // 클라이언트가 준비되지 않았으면 아무것도 렌더링하지 않음
   if (!isClient) {
-    console.log('⏳ 클라이언트 준비 중...');
     return <div>로딩 중...</div>;
   }
 
-  console.log('🎨 클라이언트에서 렌더링 시작, enabledAssets:', enabledAssets);
-
   return (
-    <div className="balance-list">
+    <div className="balance-list" style={{ marginTop: '20px' }}>
       {selectedWallet && (
         <>
           {selectedWallet.addresses.XRP && enabledAssets.includes('XRP') && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <XRPIcon />
-              <div className="balance-card-inner">
+            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
+              <XRPIcon size={56} />
+              <div className="balance-card-inner" style={{ flex: 1 }}>
                 <span className="balance-card-name">XRP Ledger</span>
-                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-                  {xrpBalance?.data?.balance || '0.00'} XRP
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                  {xrpBalance?.data?.balance || '0.000000'} XRP
                 </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   {xrpBalance?.data?.usdValue || '$0.00'}
                 </div>
               </div>
             </div>
           )}
 
-          {enabledAssets.includes('EUR') && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <EURIcon />
-              <div className="balance-card-inner">
-                <span className="balance-card-name">유로화 (EUR)</span>
-                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-                  0.00 EUR
+          {enabledAssets.includes('KRW') && (
+            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
+              <KRWIcon size={56} />
+              <div className="balance-card-inner" style={{ flex: 1 }}>
+                <span className="balance-card-name">한국 원화 (KRW)</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                  0.000000 KRW
                 </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   $0.00
                 </div>
               </div>
@@ -273,14 +300,16 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
           )}
 
           {enabledAssets.includes('USD') && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <USDIcon />
-              <div className="balance-card-inner">
+            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
+              <USDIcon size={56} />
+              <div className="balance-card-inner" style={{ flex: 1 }}>
                 <span className="balance-card-name">미국 달러 (USD)</span>
-                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-                  0.00 USD
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                  0.000000 USD
                 </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   $0.00
                 </div>
               </div>
@@ -288,29 +317,33 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
           )}
 
           {enabledAssets.includes('CNY') && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <CNYIcon />
-              <div className="balance-card-inner">
+            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
+              <CNYIcon size={56} />
+              <div className="balance-card-inner" style={{ flex: 1 }}>
                 <span className="balance-card-name">중국 위안 (CNY)</span>
-                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-                  0.00 CNY
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                  0.000000 CNY
                 </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   $0.00
                 </div>
               </div>
             </div>
           )}
 
-          {enabledAssets.includes('TST') && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <TSTIcon />
-              <div className="balance-card-inner">
-                <span className="balance-card-name">테스트 토큰 (TST)</span>
-                <div className="balance-amount" style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-                  0.00 TST
+          {enabledAssets.includes('EUR') && (
+            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
+              <EURIcon size={56} />
+              <div className="balance-card-inner" style={{ flex: 1 }}>
+                <span className="balance-card-name">유로화 (EUR)</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                  0.000000 EUR
                 </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '18px' }}>
+                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   $0.00
                 </div>
               </div>
