@@ -1,0 +1,86 @@
+{
+  "user1234": [
+    {
+      "userId": "user1234",
+      "friendId": "friend456",
+      "friendName": "김친구",
+      "friendPhone": "010-1111-1111",
+      "friendAddress": "friend1234",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:39:53.810Z",
+      "createdAt": "2025-09-17T14:39:53.810Z"
+    }
+  ],
+  "friend1234": [
+    {
+      "userId": "friend1234",
+      "friendId": "user1234",
+      "friendName": "친구",
+      "friendPhone": "알 수 없음",
+      "friendAddress": "user1234",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:39:53.884Z",
+      "createdAt": "2025-09-17T14:39:53.884Z"
+    }
+  ],
+  "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx": [
+    {
+      "userId": "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx",
+      "friendId": "friend_1758120449368",
+      "friendName": "연채원",
+      "friendPhone": "010-2222-2222",
+      "friendAddress": "rdu2u0qttyd",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:47:29.372Z",
+      "createdAt": "2025-09-17T14:47:29.372Z"
+    }
+  ],
+  "r83ydrw6envs": [
+    {
+      "userId": "r83ydrw6envs",
+      "friendId": "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx",
+      "friendName": "친구",
+      "friendPhone": "알 수 없음",
+      "friendAddress": "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:43:34.471Z",
+      "createdAt": "2025-09-17T14:43:34.471Z"
+    }
+  ],
+  "rPMCePXPJFhQ5B3MMmD2wdtBCrTyduirbJ": [
+    {
+      "userId": "rPMCePXPJFhQ5B3MMmD2wdtBCrTyduirbJ",
+      "friendId": "friend_1758120345593",
+      "friendName": "테스트친구",
+      "friendPhone": "010-3333-3333",
+      "friendAddress": "rfcskrebgqm8",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:45:45.597Z",
+      "createdAt": "2025-09-17T14:45:45.597Z"
+    }
+  ],
+  "rfcskrebgqm8": [
+    {
+      "userId": "rfcskrebgqm8",
+      "friendId": "rPMCePXPJFhQ5B3MMmD2wdtBCrTyduirbJ",
+      "friendName": "친구",
+      "friendPhone": "알 수 없음",
+      "friendAddress": "rPMCePXPJFhQ5B3MMmD2wdtBCrTyduirbJ",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:45:45.606Z",
+      "createdAt": "2025-09-17T14:45:45.606Z"
+    }
+  ],
+  "rdu2u0qttyd": [
+    {
+      "userId": "rdu2u0qttyd",
+      "friendId": "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx",
+      "friendName": "친구",
+      "friendPhone": "알 수 없음",
+      "friendAddress": "rU362zHMUKMkp9r5weu7UNZTvUVnMAjArx",
+      "isOnline": true,
+      "lastSeen": "2025-09-17T14:47:29.377Z",
+      "createdAt": "2025-09-17T14:47:29.377Z"
+    }
+  ]
+}

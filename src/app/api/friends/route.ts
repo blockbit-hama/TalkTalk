@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import fs from 'fs';
+import path from 'path';
 
 // 개발 환경에서는 메모리에 저장, 프로덕션에서는 Vercel KV 사용
 interface FriendRelationship {
@@ -16,6 +18,44 @@ interface FriendRelationship {
 // 메모리 저장소 (개발용)
 const friendRelationships: Map<string, FriendRelationship[]> = new Map();
 
+// 파일 기반 저장소 (개발 환경용)
+const FRIENDS_FILE = path.join(process.cwd(), 'data', 'friends.json');
+
+// 데이터 디렉토리 생성
+const ensureDataDir = () => {
+  const dataDir = path.dirname(FRIENDS_FILE);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+};
+
+// 파일에서 데이터 로드
+const loadFromFile = (): Map<string, FriendRelationship[]> => {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(FRIENDS_FILE)) {
+      const data = fs.readFileSync(FRIENDS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return new Map(Object.entries(parsed));
+    }
+    return new Map();
+  } catch (error) {
+    console.error('파일 로드 실패:', error);
+    return new Map();
+  }
+};
+
+// 파일에 데이터 저장
+const saveToFile = (data: Map<string, FriendRelationship[]>) => {
+  try {
+    ensureDataDir();
+    const obj = Object.fromEntries(data);
+    fs.writeFileSync(FRIENDS_FILE, JSON.stringify(obj, null, 2));
+  } catch (error) {
+    console.error('파일 저장 실패:', error);
+  }
+};
+
 // KV 연결 상태 확인
 const isKVAvailable = () => {
   return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
@@ -28,11 +68,17 @@ async function saveFriendRelationships(userId: string, relationships: FriendRela
       await kv.set(`friends:${userId}`, relationships);
       console.log(`✅ KV에 친구 관계 저장: ${userId} (${relationships.length}개)`);
     } else {
-      friendRelationships.set(userId, relationships);
-      console.log(`✅ 메모리에 친구 관계 저장: ${userId} (${relationships.length}개)`);
+      // 파일에서 기존 데이터 로드
+      const allData = loadFromFile();
+      allData.set(userId, relationships);
+
+      // 파일에 저장
+      saveToFile(allData);
+      console.log(`✅ 파일에 친구 관계 저장: ${userId} (${relationships.length}개)`);
     }
   } catch (error) {
-    console.error('KV 저장 실패, 메모리 사용:', error);
+    console.error('저장 실패:', error);
+    // 폴백으로 메모리 사용
     friendRelationships.set(userId, relationships);
   }
 }
@@ -47,10 +93,17 @@ async function getFriendRelationships(userId: string): Promise<FriendRelationshi
       }
       return relationships || [];
     } else {
-      return friendRelationships.get(userId) || [];
+      // 파일에서 데이터 로드
+      const allData = loadFromFile();
+      const relationships = allData.get(userId) || [];
+      if (relationships.length > 0) {
+        console.log(`📞 파일에서 친구 관계 조회 성공: ${userId} (${relationships.length}개)`);
+      }
+      return relationships;
     }
   } catch (error) {
-    console.error('KV 조회 실패, 메모리 사용:', error);
+    console.error('조회 실패:', error);
+    // 폴백으로 메모리 사용
     return friendRelationships.get(userId) || [];
   }
 }
@@ -70,10 +123,13 @@ async function getAllFriendRelationships(): Promise<Array<[string, FriendRelatio
       }
       return relationships;
     } else {
-      return Array.from(friendRelationships.entries());
+      // 파일에서 모든 데이터 로드
+      const allData = loadFromFile();
+      return Array.from(allData.entries());
     }
   } catch (error) {
-    console.error('전체 조회 실패, 메모리 사용:', error);
+    console.error('전체 조회 실패:', error);
+    // 폴백으로 메모리 사용
     return Array.from(friendRelationships.entries());
   }
 }
@@ -104,7 +160,7 @@ export async function GET(request: NextRequest) {
       success: true,
       friends: userFriends,
       count: userFriends.length,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      storage: isKVAvailable() ? 'KV' : 'File'
     });
 
   } catch (error) {
@@ -231,13 +287,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ 친구 관계 추가 완료:', newFriendship);
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
+    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'File');
 
     return NextResponse.json({
       success: true,
       message: '친구가 성공적으로 추가되었습니다.',
       friend: newFriendship,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      storage: isKVAvailable() ? 'KV' : 'File'
     });
 
   } catch (error) {
@@ -263,7 +319,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 사용자의 친구 목록 가져오기 (KV 또는 메모리)
+    // 사용자의 친구 목록 가져오기 (KV 또는 파일)
     const userFriends = await getFriendRelationships(userId);
 
     // 친구 제거
@@ -276,11 +332,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 업데이트된 친구 목록 저장 (KV 또는 메모리)
+    // 업데이트된 친구 목록 저장 (KV 또는 파일)
     await saveFriendRelationships(userId, updatedFriends);
 
     console.log('🗑️ 친구 관계 삭제 완료:', { userId, friendId });
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
+    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'File');
 
     return NextResponse.json({
       success: true,
@@ -314,7 +370,7 @@ export async function PATCH(request: NextRequest) {
         success: true,
         totalUsers: allRelationships.length,
         relationships: formattedRelationships,
-        storage: isKVAvailable() ? 'KV' : 'Memory'
+        storage: isKVAvailable() ? 'KV' : 'File'
       });
     }
 
