@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createHDWallet, saveWalletToStorage } from "../../lib/wallet-utils";
 import { Button, Input } from "../../components/ui";
 import { useWalletList, useEnabledAssets } from "../../hooks/useWalletAtoms";
 
-export default function CreateWalletPage() {
+function CreateWalletPageContent() {
   const router = useRouter();
   
   const [step, setStep] = useState<'input' | 'backup' | 'confirm' | 'complete'>('input');
@@ -395,4 +396,15 @@ export default function CreateWalletPage() {
       </div>
     </div>
   );
-} 
+}
+
+const CreateWalletPage = dynamic(() => Promise.resolve(CreateWalletPageContent), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-gray-500">로딩 중...</div>
+    </div>
+  )
+});
+
+export default CreateWalletPage; 

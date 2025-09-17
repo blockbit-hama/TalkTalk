@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useWalletList } from "../../hooks/useWalletAtoms";
 import { useEnabledAssets } from "../../hooks/useWalletAtoms";
@@ -15,7 +15,7 @@ interface Friend {
   isOnline: boolean;
 }
 
-export default function TransferPage() {
+function TransferContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [amount, setAmount] = useState("");
@@ -320,5 +320,17 @@ export default function TransferPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TransferPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A1A' }}>
+        <div className="text-gray-400">로딩 중...</div>
+      </div>
+    }>
+      <TransferContent />
+    </Suspense>
   );
 }

@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   
   // Docker를 위한 standalone 출력 활성화
   output: 'standalone',
-  
+
+  // 정적 생성 비활성화 (localStorage 등 클라이언트 기능 사용을 위해)
+  trailingSlash: false,
+
   // 빌드 시 타입 및 ESLint 에러 무시
   eslint: {
     ignoreDuringBuilds: true,
@@ -14,12 +17,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  
+
   // 빌드 최적화 설정
   serverExternalPackages: [],
-  
-  // 정적 내보내기 비활성화 (SSR 사용)
-  trailingSlash: false,
+
+  // Force dynamic rendering for pages with localStorage
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
   
   env: {
     GAS_COUPON_API_URL: process.env.GAS_COUPON_API_URL || 'http://localhost:9001',

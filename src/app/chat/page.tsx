@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatRoom } from '@/components/chat/ChatRoom';
 
-export default function ChatPage() {
+function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -43,5 +43,17 @@ export default function ChatPage() {
     <div className="h-screen bg-gray-50">
       <ChatRoom roomId={roomId} friendName={friendName} friendAddress={friendAddress} />
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    }>
+      <ChatContent />
+    </Suspense>
   );
 }
