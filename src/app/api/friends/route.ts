@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import fs from 'fs';
 import path from 'path';
 
@@ -56,17 +56,40 @@ const saveToFile = (data: Map<string, FriendRelationship[]>) => {
   }
 };
 
-// Redis 연결 상태 확인 (Vercel KV 또는 Upstash Redis)
+// Redis 클라이언트 초기화
+let redis: Redis | null = null;
+
+const getRedisClient = () => {
+  if (!redis) {
+    // Upstash Redis 환경변수 우선 확인
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+    }
+    // Vercel KV 환경변수 fallback
+    else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      redis = new Redis({
+        url: process.env.KV_REST_API_URL,
+        token: process.env.KV_REST_API_TOKEN,
+      });
+    }
+  }
+  return redis;
+};
+
+// Redis 연결 상태 확인
 const isRedisAvailable = () => {
-  return (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
-         (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return getRedisClient() !== null;
 };
 
 // 친구 관계 저장 함수
 async function saveFriendRelationships(userId: string, relationships: FriendRelationship[]): Promise<void> {
   try {
-    if (isRedisAvailable()) {
-      await kv.set(`friends:${userId}`, relationships);
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      await redisClient.set(`friends:${userId}`, relationships);
       console.log(`✅ Redis에 친구 관계 저장: ${userId} (${relationships.length}개)`);
     } else {
       // 파일에서 기존 데이터 로드
@@ -87,8 +110,9 @@ async function saveFriendRelationships(userId: string, relationships: FriendRela
 // 친구 관계 조회 함수
 async function getFriendRelationships(userId: string): Promise<FriendRelationship[]> {
   try {
-    if (isRedisAvailable()) {
-      const relationships = await kv.get<FriendRelationship[]>(`friends:${userId}`);
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      const relationships = await redisClient.get<FriendRelationship[]>(`friends:${userId}`);
       if (relationships) {
         console.log(`📞 Redis에서 친구 관계 조회 성공: ${userId} (${relationships.length}개)`);
       }
@@ -112,11 +136,12 @@ async function getFriendRelationships(userId: string): Promise<FriendRelationshi
 // 모든 친구 관계 조회 (디버그용)
 async function getAllFriendRelationships(): Promise<Array<[string, FriendRelationship[]]>> {
   try {
-    if (isRedisAvailable()) {
-      const keys = await kv.keys('friends:*');
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      const keys = await redisClient.keys('friends:*');
       const relationships: Array<[string, FriendRelationship[]]> = [];
       for (const key of keys) {
-        const userRelationships = await kv.get<FriendRelationship[]>(key);
+        const userRelationships = await redisClient.get<FriendRelationship[]>(key);
         if (userRelationships) {
           const userId = key.replace('friends:', '');
           relationships.push([userId, userRelationships]);

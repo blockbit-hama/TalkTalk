@@ -136,3 +136,4 @@ terraform/.terraform.lock.hcl
 
 # Local development
 *.local
+.env*.local
