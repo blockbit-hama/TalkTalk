@@ -45,10 +45,10 @@ async function saveMessages(roomId: string, messages: any[]): Promise<boolean> {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const roomId = params.roomId;
+    const { roomId } = await params;
     const messages = await getMessages(roomId);
 
     return NextResponse.json({
@@ -68,10 +68,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const roomId = params.roomId;
+    const { roomId } = await params;
     const messageData = await request.json();
 
     // 새 메시지 객체 생성

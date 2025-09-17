@@ -126,6 +126,7 @@ export default function Home() {
   const [phoneModalOpen, setPhoneModalOpen] = useState<boolean>(false);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
+  const [displayUserName, setDisplayUserName] = useState<string>('');
   const balanceOptions = ['잔액', 'NFT'] as const;
   
   // useMasterAddress 훅 사용
@@ -424,6 +425,9 @@ export default function Home() {
         // 로컬스토리지에도 저장 (UI 표시용)
         localStorage.setItem('userPhoneNumber', phoneNumber.trim());
         localStorage.setItem('userName', userName.trim());
+
+        // 화면에 표시되는 사용자 이름 업데이트
+        setDisplayUserName(userName.trim());
       } else {
         alert(result.error || '전화번호 등록에 실패했습니다.');
       }
@@ -433,20 +437,28 @@ export default function Home() {
     }
   };
 
+  // 사용자 이름 로드 useEffect
+  useEffect(() => {
+    const savedUserName = localStorage.getItem('userName');
+    if (savedUserName) {
+      setDisplayUserName(savedUserName);
+    }
+  }, []);
+
   // 디버깅용 useEffect
   useEffect(() => {
     if (selectedWallet) {
       console.log('선택된 지갑:', selectedWallet);
       console.log('활성화된 자산:', enabledAssets);
       console.log('모든 주소들:', selectedWallet.addresses);
-      
+
       // XRPL 자산 상태 확인
       const xrplAssets = ['XRP'];
       xrplAssets.forEach(symbol => {
         console.log(`${symbol} 주소:`, selectedWallet.addresses[symbol]);
         console.log(`${symbol} 활성화됨:`, enabledAssets.includes(symbol));
       });
-      
+
       // 잔액 데이터 디버깅
       console.log('XRP 잔액 데이터:', xrpBalance.data);
     }
@@ -629,32 +641,26 @@ export default function Home() {
           </div>
 
           {/* 전화번호 연동 버튼 */}
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               className="profile-button"
               aria-label="전화번호 연동"
               onClick={() => setPhoneModalOpen(true)}
               style={{ marginRight: '8px' }}
             >
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="10" y="4" width="12" height="20" rx="2" stroke="#F2A003" strokeWidth="2" fill="none"/>
-                <rect x="13" y="7" width="6" height="1" fill="#F2A003"/>
-                <circle cx="16" cy="20" r="1" fill="#F2A003"/>
-                <path d="M8 12C8 11.4477 8.44772 11 9 11H11" stroke="#F2A003" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M24 12C24 11.4477 23.5523 11 23 11H21" stroke="#F2A003" strokeWidth="1.5" strokeLinecap="round"/>
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="12" y="6" width="16" height="28" rx="3" stroke="#F2A003" strokeWidth="2.5" fill="none"/>
+                <rect x="16" y="10" width="8" height="2" fill="#F2A003"/>
+                <circle cx="20" cy="28" r="2" fill="#F2A003"/>
+                <path d="M10 16C10 15.4477 10.4477 15 11 15H13" stroke="#F2A003" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M30 16C30 15.4477 29.5523 15 29 15H27" stroke="#F2A003" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
-          </div>
 
-          {/* QR 코드 스캔 버튼 */}
-          <div>
-            <button
-              className="profile-button"
-              aria-label="QR 스캔"
-              onClick={() => alert('QR 스캔 기능은 추후 구현 예정입니다.')}
-            >
-              <QrIcon />
-            </button>
+            {/* 사용자 이름 표시 */}
+            <div style={{ color: '#F2A003', fontSize: '16px', fontWeight: 'bold' }}>
+              {displayUserName}
+            </div>
           </div>
         </div>
       </nav>
