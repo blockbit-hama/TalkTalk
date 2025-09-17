@@ -164,61 +164,22 @@ const KRWIcon = ({ size = 72 }: { size?: number }) => (
     width: size,
     height: size,
     borderRadius: '50%',
+    background: 'linear-gradient(135deg, #CD201F 0%, #0047A0 50%, #FFFFFF 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(205, 32, 31, 0.3)',
-    border: '3px solid rgba(255, 255, 255, 0.2)',
-    overflow: 'hidden'
+    border: '3px solid rgba(255, 255, 255, 0.2)'
   }}>
-    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
-      {/* 한국 국기 배경 */}
-      <rect width="72" height="72" fill="white"/>
-
-      {/* 태극 심볼 */}
-      <g transform="translate(36, 36)">
-        {/* 빨간색 태극 */}
-        <path d="M 0,-12 A 12,12 0 0,1 0,0 A 6,6 0 0,1 0,-12" fill="#CD201F"/>
-        {/* 파란색 태극 */}
-        <path d="M 0,0 A 12,12 0 0,1 0,12 A 6,6 0 0,1 0,0" fill="#0047A0"/>
-        <circle cx="0" cy="-6" r="6" fill="#0047A0"/>
-        <circle cx="0" cy="6" r="6" fill="#CD201F"/>
-      </g>
-
-      {/* 건괘 (우상단) */}
-      <g transform="translate(50, 22)">
-        <rect x="0" y="0" width="12" height="2" fill="black"/>
-        <rect x="0" y="4" width="12" height="2" fill="black"/>
-        <rect x="0" y="8" width="12" height="2" fill="black"/>
-      </g>
-
-      {/* 곤괘 (좌하단) */}
-      <g transform="translate(10, 48)">
-        <rect x="0" y="0" width="4" height="2" fill="black"/>
-        <rect x="8" y="0" width="4" height="2" fill="black"/>
-        <rect x="0" y="4" width="4" height="2" fill="black"/>
-        <rect x="8" y="4" width="4" height="2" fill="black"/>
-        <rect x="0" y="8" width="4" height="2" fill="black"/>
-        <rect x="8" y="8" width="4" height="2" fill="black"/>
-      </g>
-
-      {/* 감괘 (좌상단) */}
-      <g transform="translate(10, 22)">
-        <rect x="0" y="0" width="4" height="2" fill="black"/>
-        <rect x="8" y="0" width="4" height="2" fill="black"/>
-        <rect x="0" y="4" width="12" height="2" fill="black"/>
-        <rect x="0" y="8" width="4" height="2" fill="black"/>
-        <rect x="8" y="8" width="4" height="2" fill="black"/>
-      </g>
-
-      {/* 리괘 (우하단) */}
-      <g transform="translate(50, 48)">
-        <rect x="0" y="0" width="12" height="2" fill="black"/>
-        <rect x="0" y="4" width="4" height="2" fill="black"/>
-        <rect x="8" y="4" width="4" height="2" fill="black"/>
-        <rect x="0" y="8" width="12" height="2" fill="black"/>
-      </g>
-    </svg>
+    <span style={{
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: size * 0.25,
+      textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+      fontFamily: 'monospace'
+    }}>
+      ₩
+    </span>
   </div>
 );
 
