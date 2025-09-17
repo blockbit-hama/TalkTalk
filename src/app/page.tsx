@@ -152,46 +152,6 @@ export default function Home() {
     updateEnabledAssets
   } = useWallet();
 
-  // 홈페이지에서 직접 localStorage에서 enabledAssets 읽기
-  const [localEnabledAssets, setLocalEnabledAssets] = useState<string[]>([]);
-
-  useEffect(() => {
-    console.log('📱 홈페이지 useEffect 실행됨');
-    console.log('📱 selectedWallet:', selectedWallet);
-    console.log('📱 isWalletLoading:', isWalletLoading);
-    console.log('📱 useWallet에서 가져온 enabledAssets:', enabledAssets);
-
-    // 클라이언트 사이드에서 직접 localStorage 읽기
-    if (typeof window !== 'undefined') {
-      console.log('🖥️ 클라이언트 사이드에서 localStorage 직접 읽기');
-
-      const storedAssets = localStorage.getItem('enabledAssets');
-      console.log('💾 localStorage에서 읽은 enabledAssets:', storedAssets);
-
-      if (storedAssets) {
-        try {
-          const parsedAssets = JSON.parse(storedAssets);
-          const assetsArray = parsedAssets.map((item: any) => item.symbol || item).filter(Boolean);
-          console.log('✅ 파싱된 enabledAssets:', assetsArray);
-          setLocalEnabledAssets(assetsArray);
-        } catch (error) {
-          console.error('❌ enabledAssets 파싱 실패:', error);
-          setLocalEnabledAssets(['XRP', 'USD', 'CNY', 'EUR', 'TST']);
-        }
-      } else {
-        console.log('📦 localStorage에 enabledAssets 없음, 기본값 설정');
-        setLocalEnabledAssets(['XRP', 'USD', 'CNY', 'EUR', 'TST']);
-        // 기본값을 localStorage에 저장
-        const defaultData = ['XRP', 'USD', 'CNY', 'EUR', 'TST'].map(symbol => ({ symbol }));
-        localStorage.setItem('enabledAssets', JSON.stringify(defaultData));
-        console.log('💾 기본값을 localStorage에 저장 완료');
-      }
-
-      // 지갑도 함께 로드
-      console.log('📞 loadWallet 호출');
-      loadWallet();
-    }
-  }, []); // 빈 의존성 배열로 한 번만 실행
 
   // XRPL 자산 잔액 데이터 가져오기
   const xrpBalance = useWalletBalance(
@@ -205,23 +165,19 @@ export default function Home() {
     console.log('잔액 캐시 무효화 완료');
   };
 
-  // 총 달러 금액 계산 (XRPL 자산들의 합계) - localEnabledAssets 사용
+  // 총 달러 금액 계산 (XRPL 자산들의 합계)
   const calculateTotalUSD = () => {
-    // localEnabledAssets를 우선 사용, 없으면 enabledAssets 사용
-    const assetsToUse = localEnabledAssets.length > 0 ? localEnabledAssets : enabledAssets;
+    console.log('💰 계산에 사용할 자산:', enabledAssets);
 
-    console.log('💰 계산에 사용할 자산:', assetsToUse);
-
-    if (!selectedWallet || !assetsToUse.length) return 0;
+    if (!selectedWallet || !enabledAssets.length) return 0;
 
     let total = 0;
 
     // XRPL 자산들의 USD 가치 합계
-    if (assetsToUse.includes('XRP') && xrpBalance.data) {
+    if (enabledAssets.includes('XRP') && xrpBalance.data) {
       const xrpValue = parseFloat(xrpBalance.data.usdValue.replace('$', '').replace(',', ''));
       total += xrpValue;
     }
-
 
     return total;
   };
@@ -582,26 +538,6 @@ export default function Home() {
   }, []);
 
 
-  // 코인별 아이콘 매핑
-  const getCoinIcon = (symbol: string, size: number = 54) => {
-    if (symbol === 'XRP') return <XrpIcon size={size} />;
-    if (symbol === 'USD') return (
-      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xl">
-        $
-      </div>
-    );
-    if (symbol === 'CNY') return (
-      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold text-xl">
-        ¥
-      </div>
-    );
-    if (symbol === 'EUR') return (
-      <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
-        €
-      </div>
-    );
-    return <span style={{ width: size, height: size, display: 'inline-block' }} />;
-  };
 
   const profileRef = useRef<HTMLDivElement>(null);
   const walletSelectRef = useRef<HTMLDivElement>(null);
@@ -776,133 +712,6 @@ export default function Home() {
           selectedWallet={selectedWallet}
           xrpBalance={xrpBalance}
         />
-
-        {/* 기존 자산 리스트 (디버깅용으로 임시 유지) */}
-        <div className="balance-list" style={{ opacity: 0.5, border: '1px dashed #666' }}>
-          <div style={{ color: '#666', fontSize: '12px', padding: '5px' }}>
-            기존 방식 (디버깅용): localEnabledAssets={JSON.stringify(localEnabledAssets)}, enabledAssets={JSON.stringify(enabledAssets)}
-          </div>
-          {selectedWallet && (
-            <>
-              {selectedWallet.addresses.XRP && (localEnabledAssets.length > 0 ? localEnabledAssets : enabledAssets).includes('XRP') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <XrpIcon size={72} />
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">XRP (기존방식)</span>
-                    <span className="balance-card-usd" style={{ color: xrpBalance.data?.changeColor || '#6FCF97' }}>
-                      {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.price ? `${xrpBalance.data.price} ${xrpBalance.data.change}` : '$0.50 0.00%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.balance || '0.00000'}
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      {xrpBalance.isLoading ? '로딩 중...' : xrpBalance.data?.usdValue || '$0.00'}
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {selectedWallet.addresses.USD && enabledAssets.includes('USD') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xl">
-                    $
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">Devnet USD</span>
-                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
-                      $1.00 0.00%
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      0.000000
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      $0.00
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses.CNY && enabledAssets.includes('CNY') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold text-xl">
-                    ¥
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">Devnet CNY</span>
-                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
-                      ¥7.20 0.00%
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      0.000000
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      $0.00
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses.EUR && enabledAssets.includes('EUR') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
-                    €
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">Devnet EUR</span>
-                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
-                      €0.92 0.00%
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      0.000000
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      $0.00
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedWallet.addresses.TST && enabledAssets.includes('TST') && (
-                <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                    T
-                  </div>
-                  <div className="balance-card-inner">
-                    <span className="balance-card-name">Devnet Test Token</span>
-                    <span className="balance-card-usd" style={{ color: '#6FCF97' }}>
-                      $0.10 0.00%
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end ml-auto">
-                    <span className="balance-card-amount">
-                      0.000000
-                    </span>
-                    <span className="balance-card-sub-usd">
-                      $0.00
-                    </span>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          
-          {!selectedWallet && !isWalletLoading && (
-            <div className="common-card" style={{ padding: '14px 24px', gap: 20 }}>
-              <div className="balance-card-inner">
-                <span className="balance-card-name">지갑이 없습니다</span>
-                <span className="balance-card-usd" style={{ color: '#A0A0B0' }}>새 지갑을 생성해주세요</span>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* 가상자산 추가 링크 */}
         {selectedWallet && (

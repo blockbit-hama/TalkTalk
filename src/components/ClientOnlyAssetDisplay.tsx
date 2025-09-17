@@ -240,18 +240,6 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
 
   return (
     <div className="balance-list">
-      <div style={{ padding: '10px', background: '#333', margin: '10px', borderRadius: '5px' }}>
-        <p style={{ color: 'white', margin: '5px 0' }}>
-          🎯 클라이언트 전용 컴포넌트 실행됨!
-        </p>
-        <p style={{ color: 'yellow', margin: '5px 0' }}>
-          활성화된 자산: {JSON.stringify(enabledAssets)}
-        </p>
-        <p style={{ color: 'cyan', margin: '5px 0' }}>
-          지갑 주소: {selectedWallet?.addresses?.XRP || '없음'}
-        </p>
-      </div>
-
       {selectedWallet && (
         <>
           {selectedWallet.addresses.XRP && enabledAssets.includes('XRP') && (
