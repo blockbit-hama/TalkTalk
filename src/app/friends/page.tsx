@@ -28,10 +28,10 @@ export default function FriendsPage() {
     if (wallet?.addresses?.XRP) {
       loadFriends();
 
-      // 3초마다 친구 목록 동기화 (상대방이 나를 추가했는지 확인)
+      // 1초마다 친구 목록 동기화 (상대방이 나를 추가했는지 확인)
       const pollInterval = setInterval(() => {
         loadFriends();
-      }, 3000);
+      }, 1000);
 
       return () => {
         clearInterval(pollInterval);

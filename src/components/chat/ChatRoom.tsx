@@ -62,10 +62,10 @@ export function ChatRoom({ roomId, friendName, friendAddress }: ChatRoomProps) {
     if (currentUserId && roomId) {
       loadMessages();
 
-      // 폴링으로 메시지 동기화 (2초마다)
+      // 폴링으로 메시지 동기화 (1초마다)
       const pollInterval = setInterval(() => {
         loadMessages();
-      }, 2000);
+      }, 1000);
 
       return () => {
         clearInterval(pollInterval);
