@@ -164,22 +164,30 @@ const KRWIcon = ({ size = 72 }: { size?: number }) => (
     width: size,
     height: size,
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #CD201F 0%, #0047A0 50%, #FFFFFF 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(205, 32, 31, 0.3)',
-    border: '3px solid rgba(255, 255, 255, 0.2)'
+    border: '3px solid rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden'
   }}>
-    <span style={{
-      color: 'white',
-      fontWeight: 'bold',
-      fontSize: size * 0.25,
-      textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-      fontFamily: 'monospace'
-    }}>
-      ₩
-    </span>
+    <svg width={size} height={size} viewBox="0 0 72 72" style={{ borderRadius: '50%' }}>
+      {/* 흰색 배경 */}
+      <rect width="72" height="72" fill="white"/>
+
+      {/* 태극 문양 */}
+      <g transform="translate(36, 36)">
+        {/* 빨간색 반원 (상단) */}
+        <path d="M 0,-18 A 18,18 0 0,1 0,18 Z" fill="#CD201F"/>
+
+        {/* 파란색 반원 (하단) */}
+        <path d="M 0,-18 A 18,18 0 0,0 0,18 Z" fill="#0047A0"/>
+
+        {/* 중앙의 작은 원들 */}
+        <circle cx="0" cy="-9" r="9" fill="#0047A0"/>
+        <circle cx="0" cy="9" r="9" fill="#CD201F"/>
+      </g>
+    </svg>
   </div>
 );
 
