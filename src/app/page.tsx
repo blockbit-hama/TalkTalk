@@ -127,10 +127,10 @@ const AssetFlowChart = () => {
   const minValue = Math.min(...mockData.map(d => d.value));
   const range = maxValue - minValue;
 
-  // SVG 좌표 계산 - 자산 리스트 너비와 동일하게
-  const width = 350; // 더 넓게
-  const height = 80; // 조금 더 높게
-  const padding = { top: 15, right: 15, bottom: 25, left: 15 };
+  // SVG 좌표 계산 - 끝에서 끝까지 전체 너비 사용
+  const width = 400; // 훨씬 더 넓게
+  const height = 90; // 높이도 조금 증가
+  const padding = { top: 15, right: 2, bottom: 25, left: 2 }; // 좌우 패딩 최소화
 
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
@@ -141,7 +141,7 @@ const AssetFlowChart = () => {
     y: padding.top + ((maxValue - d.value) / range) * chartHeight
   }));
 
-  // 부드러운 곡선을 위한 Catmull-Rom 스플라인 계산
+  // 더 부드러운 곡선을 위한 향상된 베지어 곡선 계산
   const createSmoothPath = (points: Array<{x: number, y: number}>) => {
     if (points.length < 2) return '';
 
@@ -151,11 +151,16 @@ const AssetFlowChart = () => {
       const current = points[i];
       const next = points[i + 1];
 
-      // 베지어 곡선의 제어점 계산
-      const cp1x = current.x + (next.x - current.x) * 0.3;
-      const cp1y = current.y;
-      const cp2x = next.x - (next.x - current.x) * 0.3;
-      const cp2y = next.y;
+      // 이전과 다음 점을 고려한 부드러운 곡선
+      const prev = i > 0 ? points[i - 1] : current;
+      const after = i < points.length - 2 ? points[i + 2] : next;
+
+      // 더 부드러운 제어점 계산 - 인접 점들의 영향 고려
+      const tension = 0.4; // 곡선의 부드러움 정도
+      const cp1x = current.x + (next.x - prev.x) * tension * 0.2;
+      const cp1y = current.y + (next.y - prev.y) * tension * 0.2;
+      const cp2x = next.x - (after.x - current.x) * tension * 0.2;
+      const cp2y = next.y - (after.y - current.y) * tension * 0.2;
 
       path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
     }
