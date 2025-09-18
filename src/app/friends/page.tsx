@@ -23,19 +23,10 @@ export default function FriendsPage() {
   const [newFriendName, setNewFriendName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 서버에서 친구 데이터 로드 및 실시간 동기화
+  // 서버에서 친구 데이터 로드
   useEffect(() => {
     if (wallet?.addresses?.XRP) {
       loadFriends();
-
-      // 1초마다 친구 목록 동기화 (상대방이 나를 추가했는지 확인)
-      const pollInterval = setInterval(() => {
-        loadFriends();
-      }, 1000);
-
-      return () => {
-        clearInterval(pollInterval);
-      };
     }
   }, [wallet]);
 
@@ -153,13 +144,13 @@ export default function FriendsPage() {
       const friendResult = await friendResponse.json();
 
       if (friendResponse.ok && friendResult.success) {
-        // 친구 목록 새로고침
-        await loadFriends();
-
-        // 폼 초기화
+        // 즉시 폼 초기화 및 모달 닫기
         setNewFriendPhone("");
         setNewFriendName("");
         setShowAddFriend(false);
+
+        // 백그라운드에서 친구 목록 새로고침
+        loadFriends();
 
         alert(`${newFriendName} 친구가 추가되었습니다!`);
       } else {
