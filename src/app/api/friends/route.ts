@@ -61,19 +61,31 @@ let redis: Redis | null = null;
 
 const getRedisClient = () => {
   if (!redis) {
-    // Upstash Redis 환경변수 우선 확인
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    }
-    // Vercel KV 환경변수 fallback
-    else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      redis = new Redis({
-        url: process.env.KV_REST_API_URL,
-        token: process.env.KV_REST_API_TOKEN,
-      });
+    try {
+      // Vercel 문서에 따른 Redis.fromEnv() 패턴 사용
+      redis = Redis.fromEnv();
+      console.log('✅ Redis 클라이언트가 환경변수로부터 초기화되었습니다.');
+    } catch (error) {
+      console.log('⚠️ Redis.fromEnv() 실패, 수동 설정으로 시도합니다:', error);
+
+      // Upstash Redis 환경변수 우선 확인
+      if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+        redis = new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN,
+        });
+        console.log('✅ Upstash Redis 수동 설정 완료');
+      }
+      // Vercel KV 환경변수 fallback
+      else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+        redis = new Redis({
+          url: process.env.KV_REST_API_URL,
+          token: process.env.KV_REST_API_TOKEN,
+        });
+        console.log('✅ Vercel KV 호환 설정 완료');
+      } else {
+        console.log('❌ Redis 환경변수를 찾을 수 없습니다.');
+      }
     }
   }
   return redis;

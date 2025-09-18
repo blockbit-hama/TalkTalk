@@ -98,12 +98,184 @@ const QrIcon = () => (
     <rect x="8" y="6" width="2" height="20" fill="#F2A003"/>
     <rect x="12" y="6" width="2" height="20" fill="#F2A003"/>
     <rect x="16" y="6" width="2" height="20" fill="#F2A003"/>
-    
+
     {/* 오른쪽 세로선 */}
     <rect x="22" y="6" width="2" height="20" fill="#F2A003"/>
     <rect x="26" y="6" width="2" height="20" fill="#F2A003"/>
   </svg>
 );
+
+// 자산 흐름 차트 컴포넌트 (Mock 데이터)
+const AssetFlowChart = () => {
+  // 1년간의 Mock 데이터 (달러 기준) - 월별
+  const mockData = [
+    { month: '23/10', value: 245.80 },
+    { month: '23/11', value: 312.45 },
+    { month: '23/12', value: 389.20 },
+    { month: '24/01', value: 456.75 },
+    { month: '24/02', value: 423.30 },
+    { month: '24/03', value: 578.90 },
+    { month: '24/04', value: 634.25 },
+    { month: '24/05', value: 721.60 },
+    { month: '24/06', value: 689.15 },
+    { month: '24/07', value: 792.40 },
+    { month: '24/08', value: 845.70 },
+    { month: '24/09', value: 925.85 }
+  ];
+
+  const maxValue = Math.max(...mockData.map(d => d.value));
+  const minValue = Math.min(...mockData.map(d => d.value));
+  const range = maxValue - minValue;
+
+  // SVG 좌표 계산 - 자산 리스트 너비와 동일하게
+  const width = 350; // 더 넓게
+  const height = 80; // 조금 더 높게
+  const padding = { top: 15, right: 15, bottom: 25, left: 15 };
+
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  // 좌표 계산
+  const coordinates = mockData.map((d, i) => ({
+    x: padding.left + (i / (mockData.length - 1)) * chartWidth,
+    y: padding.top + ((maxValue - d.value) / range) * chartHeight
+  }));
+
+  // 부드러운 곡선을 위한 Catmull-Rom 스플라인 계산
+  const createSmoothPath = (points: Array<{x: number, y: number}>) => {
+    if (points.length < 2) return '';
+
+    let path = `M ${points[0].x},${points[0].y}`;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const current = points[i];
+      const next = points[i + 1];
+
+      // 베지어 곡선의 제어점 계산
+      const cp1x = current.x + (next.x - current.x) * 0.3;
+      const cp1y = current.y;
+      const cp2x = next.x - (next.x - current.x) * 0.3;
+      const cp2y = next.y;
+
+      path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
+    }
+
+    return path;
+  };
+
+  const smoothPath = createSmoothPath(coordinates);
+
+  const currentValue = mockData[mockData.length - 1].value;
+  const previousValue = mockData[mockData.length - 2].value;
+  const change = currentValue - previousValue;
+  const changePercent = ((change / previousValue) * 100).toFixed(2);
+  const isPositive = change >= 0;
+
+  return (
+    <div style={{
+      width: '100%',
+      padding: '12px 8px'
+    }}>
+      {/* 차트 제목과 변화율 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '12px'
+      }}>
+        <span style={{
+          color: '#999',
+          fontSize: '13px',
+          fontWeight: '500'
+        }}>
+          1년 자산 흐름
+        </span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span style={{
+            color: isPositive ? '#4CAF50' : '#F44336',
+            fontSize: '13px',
+            fontWeight: '600'
+          }}>
+            {isPositive ? '+' : ''}{changePercent}%
+          </span>
+          <span style={{
+            color: isPositive ? '#4CAF50' : '#F44336',
+            fontSize: '12px'
+          }}>
+            {isPositive ? '↗' : '↘'}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG 차트 */}
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }}>
+        {/* 격자 배경 */}
+        <defs>
+          <pattern id="grid" width="50" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 50 0 L 0 0 0 20" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        {/* 그라데이션 영역 */}
+        <defs>
+          <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#F2A003" stopOpacity="0.35"/>
+            <stop offset="100%" stopColor="#F2A003" stopOpacity="0.03"/>
+          </linearGradient>
+        </defs>
+
+        {/* 채움 영역 - 부드러운 곡선으로 */}
+        <path
+          d={`${smoothPath} L ${coordinates[coordinates.length - 1].x},${padding.top + chartHeight} L ${coordinates[0].x},${padding.top + chartHeight} Z`}
+          fill="url(#chartGradient)"
+        />
+
+        {/* 부드러운 곡선 라인 */}
+        <path
+          d={smoothPath}
+          fill="none"
+          stroke="#F2A003"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {/* 데이터 포인트 */}
+        {coordinates.map((coord, i) => (
+          <circle
+            key={i}
+            cx={coord.x}
+            cy={coord.y}
+            r="3"
+            fill="#F2A003"
+            stroke="#1A1A1A"
+            strokeWidth="1.5"
+          />
+        ))}
+
+        {/* X축 라벨 */}
+        {[0, Math.floor(mockData.length / 2), mockData.length - 1].map(i => (
+          <text
+            key={i}
+            x={coordinates[i].x}
+            y={height - 8}
+            textAnchor="middle"
+            fill="#666"
+            fontSize="11"
+            fontFamily="monospace"
+          >
+            {mockData[i].month}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+};
 
 // Coin 타입 정의
 interface Coin {
@@ -659,6 +831,15 @@ export default function Home() {
         {/* 내 ETH/달러/쿠폰 */}
         <div className="main-summary-box">
           <div className="main-summary-amount">${totalUSD.toFixed(2)}</div>
+
+          {/* 자산 흐름 차트 */}
+          <div style={{
+            marginTop: '16px',
+            padding: '12px 0',
+            borderTop: '1px solid #333'
+          }}>
+            <AssetFlowChart />
+          </div>
         </div>
         
         {/* 전송/스왑/Faucet 버튼 */}
