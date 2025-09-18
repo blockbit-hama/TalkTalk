@@ -90,34 +90,16 @@ export default function FriendsPage() {
     setIsLoading(true);
     
     try {
-      // 서버에서 친구 검색
-      const { searchFriendByPhone, registerFriendToServer } = await import('../../lib/api/server-registration');
-      const searchResult = await searchFriendByPhone(newFriendPhone);
-      
-      let friendData: Friend;
-      
-      if (searchResult.success && searchResult.friend) {
-        // 서버에서 찾은 친구 정보 사용
-        friendData = {
-          id: searchResult.friend.id,
-          name: newFriendName, // 사용자가 입력한 이름 우선
-          phoneNumber: newFriendPhone,
-          xrplAddress: searchResult.friend.xrplAddress,
-          isOnline: true,
-          lastSeen: new Date()
-        };
-      } else {
-        // 서버에서 찾지 못한 경우 새로 생성
-        const mockXrplAddress = `r${Math.random().toString(36).substr(2, 24)}`;
-        friendData = {
-          id: `friend_${Date.now()}`,
-          name: newFriendName,
-          phoneNumber: newFriendPhone,
-          xrplAddress: mockXrplAddress,
-          isOnline: Math.random() > 0.5,
-          lastSeen: new Date()
-        };
-      }
+      // 간단한 친구 데이터 생성 (서버 검색 없이)
+      const mockXrplAddress = `r${Math.random().toString(36).substr(2, 24)}`;
+      const friendData: Friend = {
+        id: `friend_${Date.now()}`,
+        name: newFriendName,
+        phoneNumber: newFriendPhone,
+        xrplAddress: mockXrplAddress,
+        isOnline: Math.random() > 0.5,
+        lastSeen: new Date()
+      };
 
       // useWallet에서 현재 사용자 주소 가져오기
       if (!wallet?.addresses?.XRP) {
