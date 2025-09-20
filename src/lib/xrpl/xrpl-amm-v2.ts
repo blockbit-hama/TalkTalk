@@ -12,17 +12,17 @@ export interface MockToken {
 // XRPL Devnet 실제 토큰 정의 (표준 예제 기반)
 export const MOCK_TOKENS: MockToken[] = [
   {
-    currency: 'USD',
-    issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX', // Devnet USD - 실제 AMM 풀 보유
-    name: 'Devnet USD',
-    symbol: 'USD',
+    currency: 'DALLAR',
+    issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX', // Devnet DALLAR - 실제 AMM 풀 보유
+    name: 'DALLAR Stablecoin',
+    symbol: 'DALLAR',
     decimals: 2
   },
   {
-    currency: 'CNY',
-    issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x', // Devnet CNY - 활성 AMM 풀
-    name: 'Devnet CNY',
-    symbol: 'CNY',
+    currency: 'KRW',
+    issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x', // 한화 스테이블토큰 - 활성 AMM 풀
+    name: 'Korean Won Stablecoin',
+    symbol: 'KRW',
     decimals: 2
   },
   {
@@ -302,14 +302,14 @@ export class XRPLAMMManagerV2 {
   // 사용 가능한 스왑 페어 조회
   async getAvailableSwapPairs(): Promise<Array<{ from: string; to: string; available: boolean }>> {
     const pairs = [
-      { from: 'XRP', to: 'USD' },
-      { from: 'XRP', to: 'CNY' },
+      { from: 'XRP', to: 'DALLAR' },
+      { from: 'XRP', to: 'KRW' },
       { from: 'XRP', to: 'EUR' },
-      { from: 'USD', to: 'XRP' },
-      { from: 'CNY', to: 'XRP' },
+      { from: 'DALLAR', to: 'XRP' },
+      { from: 'KRW', to: 'XRP' },
       { from: 'EUR', to: 'XRP' },
-      { from: 'USD', to: 'CNY' },
-      { from: 'CNY', to: 'USD' }
+      { from: 'DALLAR', to: 'KRW' },
+      { from: 'KRW', to: 'DALLAR' }
     ];
 
     const availablePairs = [];
@@ -331,8 +331,8 @@ export class XRPLAMMManagerV2 {
 
     // 간단한 Mock 환율 적용
     const rates: { [key: string]: number } = {
-      'USD': 1.0,
-      'CNY': 7.2,
+      'DALLAR': 1.0,
+      'KRW': 1300.0,
       'EUR': 0.85,
       'TST': 0.1
     };

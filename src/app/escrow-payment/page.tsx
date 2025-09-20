@@ -6,47 +6,83 @@ import { useEnabledAssets } from "../../hooks/useWalletAtoms";
 import { xrplEscrowV2, EscrowPayment } from "../../lib/xrpl/xrpl-escrow-v2";
 import { Button, Input, Card } from "../../components/ui";
 
-interface EscrowFormData {
-  recipientName: string;
-  recipientAddress: string;
-  amount: string;
-  currency: string;
-  memo: string;
-  conditionType: 'time' | 'manual';
-  finishAfterHours: string;
-  cancelAfterHours: string;
+interface Friend {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  xrplAddress: string;
+  avatar?: string;
+  isOnline: boolean;
 }
 
 export default function EscrowPaymentPage() {
   const router = useRouter();
-  const { selectedWallet } = useWalletList();
+  const { selectedWallet, isLoading: isWalletLoading } = useWalletList();
   const { enabledAssets } = useEnabledAssets();
 
-  const [formData, setFormData] = useState<EscrowFormData>({
-    recipientName: '',
-    recipientAddress: '',
-    amount: '',
-    currency: 'XRP',
-    memo: '',
-    conditionType: 'time',
-    finishAfterHours: '1',
-    cancelAfterHours: '24'
-  });
-
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [amount, setAmount] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState("XRP");
+  const [memo, setMemo] = useState("");
+  const [finishAfterHours, setFinishAfterHours] = useState("1");
+  const [cancelAfterHours, setCancelAfterHours] = useState("24");
+  const [showFriendSelector, setShowFriendSelector] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [escrowResult, setEscrowResult] = useState<any>(null);
   const [showResults, setShowResults] = useState(false);
 
-  // 폼 데이터 업데이트
-  const updateFormData = (field: keyof EscrowFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  // 친구 목록 로드
+  useEffect(() => {
+    loadFriendsFromServer();
+  }, []);
+
+  const loadFriendsFromServer = async () => {
+    try {
+      console.log('🔍 Escrow용 친구 목록 조회 시작');
+
+      const userPhoneNumber = sessionStorage.getItem('userPhoneNumber');
+      if (!userPhoneNumber) {
+        console.warn('❌ 사용자 전화번호를 찾을 수 없습니다.');
+        setFriends([]);
+        return;
+      }
+
+      const apiUrl = `/api/friends?userPhone=${encodeURIComponent(userPhoneNumber)}`;
+      const response = await fetch(apiUrl);
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        const serverFriends = result.friends.map((friend: any, index: number) => ({
+          id: `friend_${index}`,
+          name: friend.userName,
+          phoneNumber: friend.phoneNumber,
+          xrplAddress: friend.walletAddress,
+          isOnline: friend.isOnline || false
+        }));
+
+        setFriends(serverFriends);
+        console.log(`✅ Escrow용 친구 목록 로드 완료: ${serverFriends.length}명`);
+      } else {
+        console.warn('❌ 친구 목록 조회 실패:', result.error);
+        setFriends([]);
+      }
+    } catch (error) {
+      console.error('❌ 친구 데이터 로드 실패:', error);
+      setFriends([]);
+    }
+  };
+
+  const selectFriend = (friend: Friend) => {
+    setSelectedFriend(friend);
+    setShowFriendSelector(false);
   };
 
   // 완료/취소 시간 계산
   const calculateTimes = () => {
     const now = new Date();
-    const finishAfter = new Date(now.getTime() + (parseFloat(formData.finishAfterHours) * 60 * 60 * 1000));
-    const cancelAfter = new Date(now.getTime() + (parseFloat(formData.cancelAfterHours) * 60 * 60 * 1000));
+    const finishAfter = new Date(now.getTime() + (parseFloat(finishAfterHours) * 60 * 60 * 1000));
+    const cancelAfter = new Date(now.getTime() + (parseFloat(cancelAfterHours) * 60 * 60 * 1000));
 
     return {
       finishAfter: xrplEscrowV2.getRippleTimestamp(finishAfter),
@@ -56,25 +92,24 @@ export default function EscrowPaymentPage() {
     };
   };
 
-  // 표준 방식 Escrow 생성 실행
+  // 간소화된 Escrow 생성 실행
   const createEscrow = async () => {
     if (!selectedWallet) {
       alert('지갑 정보를 찾을 수 없습니다.');
       return;
     }
 
-    // 유효성 검사
-    if (!formData.recipientAddress.startsWith('r')) {
-      alert('올바른 XRPL 주소를 입력해주세요 (r로 시작).');
+    if (!selectedFriend) {
+      alert('받는 친구를 선택해주세요.');
       return;
     }
 
-    if (parseFloat(formData.amount) <= 0) {
+    if (!amount || parseFloat(amount) <= 0) {
       alert('올바른 금액을 입력해주세요.');
       return;
     }
 
-    if (parseFloat(formData.finishAfterHours) >= parseFloat(formData.cancelAfterHours)) {
+    if (parseFloat(finishAfterHours) >= parseFloat(cancelAfterHours)) {
       alert('취소 시간은 완료 시간보다 늦어야 합니다.');
       return;
     }
@@ -105,14 +140,14 @@ export default function EscrowPaymentPage() {
       // 시간 계산
       const times = calculateTimes();
 
-      // 표준 방식 EscrowPayment 생성
+      // 간소화된 EscrowPayment 생성
       const escrowPayment: EscrowPayment = {
-        destination: formData.recipientAddress,
-        amount: formData.amount,
-        currency: formData.currency,
+        destination: selectedFriend.xrplAddress,
+        amount: amount,
+        currency: selectedCurrency,
         finishAfter: times.finishAfter,
         cancelAfter: times.cancelAfter,
-        memo: formData.memo || `Escrow payment to ${formData.recipientName || 'recipient'}`
+        memo: memo || `Escrow payment to ${selectedFriend.name}`
       };
 
       console.log('표준 방식 Escrow 생성 파라미터:', escrowPayment);
@@ -123,7 +158,12 @@ export default function EscrowPaymentPage() {
       console.log('표준 방식 Escrow 생성 결과:', result);
       setEscrowResult({
         ...result,
-        formData,
+        selectedFriend,
+        amount,
+        selectedCurrency,
+        memo,
+        finishAfterHours,
+        cancelAfterHours,
         times
       });
       setShowResults(true);
@@ -150,27 +190,30 @@ export default function EscrowPaymentPage() {
 
     // 성공했으면 폼 초기화
     if (escrowResult?.success) {
-      setFormData({
-        recipientName: '',
-        recipientAddress: '',
-        amount: '',
-        currency: 'XRP',
-        memo: '',
-        conditionType: 'time',
-        finishAfterHours: '1',
-        cancelAfterHours: '24'
-      });
+      setSelectedFriend(null);
+      setAmount('');
+      setSelectedCurrency('XRP');
+      setMemo('');
+      setFinishAfterHours('1');
+      setCancelAfterHours('24');
     }
   };
 
+  if (isWalletLoading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col relative font-inherit" style={{ background: '#1A1A1A' }}>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-white text-lg">지갑 로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedWallet) {
     return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="text-xl mb-4">지갑을 찾을 수 없습니다</div>
-          <Button onClick={() => router.push('/')}>
-            홈으로 돌아가기
-          </Button>
+      <div className="min-h-screen w-full flex flex-col relative font-inherit" style={{ background: '#1A1A1A' }}>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-white text-lg">지갑을 찾을 수 없습니다.</div>
         </div>
       </div>
     );
@@ -206,7 +249,7 @@ export default function EscrowPaymentPage() {
               {escrowResult.success ? (
                 <div>
                   <div className="text-[#F2A003] text-lg mb-2">
-                    {formData.amount} {formData.currency}가 안전하게 보관되었습니다
+                    {amount} {selectedCurrency}가 안전하게 보관되었습니다
                   </div>
                   <div className="text-sm text-gray-300">
                     Escrow 번호: {escrowResult.escrowSequence}
@@ -228,20 +271,20 @@ export default function EscrowPaymentPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">수신자:</span>
-                    <span>{formData.recipientName || '익명'}</span>
+                    <span>{selectedFriend?.name || '익명'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">주소:</span>
-                    <span className="text-xs">{formData.recipientAddress.slice(0, 8)}...{formData.recipientAddress.slice(-6)}</span>
+                    <span className="text-xs">{selectedFriend?.xrplAddress.slice(0, 8)}...{selectedFriend?.xrplAddress.slice(-6)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">금액:</span>
-                    <span className="text-[#F2A003]">{formData.amount} {formData.currency}</span>
+                    <span className="text-[#F2A003]">{amount} {selectedCurrency}</span>
                   </div>
-                  {formData.memo && (
+                  {memo && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">메모:</span>
-                      <span>{formData.memo}</span>
+                      <span>{memo}</span>
                     </div>
                   )}
                 </div>
@@ -326,22 +369,36 @@ export default function EscrowPaymentPage() {
 
         {/* 폼 */}
         <div className="space-y-4 mb-6">
-          {/* 수신자 정보 */}
+          {/* 수신자 선택 */}
           <Card className="p-4 bg-[#2A2A2A]">
-            <h3 className="font-bold mb-3">📋 수신자 정보</h3>
+            <h3 className="font-bold mb-3">👥 받는 친구</h3>
             <div className="space-y-3">
-              <Input
-                placeholder="수신자 이름 (선택사항)"
-                value={formData.recipientName}
-                onChange={(e) => updateFormData('recipientName', e.target.value)}
-                className="bg-[#1A1A1A] border-gray-600"
-              />
-              <Input
-                placeholder="XRPL 주소 (r로 시작)"
-                value={formData.recipientAddress}
-                onChange={(e) => updateFormData('recipientAddress', e.target.value)}
-                className="bg-[#1A1A1A] border-gray-600"
-              />
+              {selectedFriend ? (
+                <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg border border-[#F2A003]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#F2A003] rounded-full flex items-center justify-center">
+                      <span className="text-black font-bold">{selectedFriend.name.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <div className="font-medium">{selectedFriend.name}</div>
+                      <div className="text-sm text-gray-400">{selectedFriend.phoneNumber}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowFriendSelector(true)}
+                    className="text-[#F2A003] text-sm px-3 py-1 border border-[#F2A003] rounded"
+                  >
+                    변경
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowFriendSelector(true)}
+                  className="w-full p-4 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-[#F2A003] hover:text-[#F2A003] transition-colors"
+                >
+                  + 친구 선택하기
+                </button>
+              )}
             </div>
           </Card>
 
@@ -353,13 +410,13 @@ export default function EscrowPaymentPage() {
                 <Input
                   type="number"
                   placeholder="금액"
-                  value={formData.amount}
-                  onChange={(e) => updateFormData('amount', e.target.value)}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
                   className="bg-[#1A1A1A] border-gray-600 flex-1"
                 />
                 <select
-                  value={formData.currency}
-                  onChange={(e) => updateFormData('currency', e.target.value)}
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
                   className="bg-[#1A1A1A] border border-gray-600 rounded-lg px-3 py-2 text-white"
                 >
                   {enabledAssets.map(asset => (
@@ -369,8 +426,8 @@ export default function EscrowPaymentPage() {
               </div>
               <Input
                 placeholder="메모 (선택사항)"
-                value={formData.memo}
-                onChange={(e) => updateFormData('memo', e.target.value)}
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
                 className="bg-[#1A1A1A] border-gray-600"
               />
             </div>
@@ -387,13 +444,13 @@ export default function EscrowPaymentPage() {
                 <Input
                   type="number"
                   placeholder="1"
-                  value={formData.finishAfterHours}
-                  onChange={(e) => updateFormData('finishAfterHours', e.target.value)}
+                  value={finishAfterHours}
+                  onChange={(e) => setFinishAfterHours(e.target.value)}
                   className="bg-[#1A1A1A] border-gray-600"
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {formData.finishAfterHours &&
-                    `${new Date(Date.now() + parseFloat(formData.finishAfterHours) * 60 * 60 * 1000).toLocaleString('ko-KR')} 이후 완료 가능`
+                  {finishAfterHours &&
+                    `${new Date(Date.now() + parseFloat(finishAfterHours) * 60 * 60 * 1000).toLocaleString('ko-KR')} 이후 완료 가능`
                   }
                 </div>
               </div>
@@ -405,13 +462,13 @@ export default function EscrowPaymentPage() {
                 <Input
                   type="number"
                   placeholder="24"
-                  value={formData.cancelAfterHours}
-                  onChange={(e) => updateFormData('cancelAfterHours', e.target.value)}
+                  value={cancelAfterHours}
+                  onChange={(e) => setCancelAfterHours(e.target.value)}
                   className="bg-[#1A1A1A] border-gray-600"
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {formData.cancelAfterHours &&
-                    `${new Date(Date.now() + parseFloat(formData.cancelAfterHours) * 60 * 60 * 1000).toLocaleString('ko-KR')} 이후 취소 가능`
+                  {cancelAfterHours &&
+                    `${new Date(Date.now() + parseFloat(cancelAfterHours) * 60 * 60 * 1000).toLocaleString('ko-KR')} 이후 취소 가능`
                   }
                 </div>
               </div>
@@ -424,10 +481,10 @@ export default function EscrowPaymentPage() {
           <div className="text-center">
             <div className="text-sm text-gray-400 mb-1">Escrow 생성 예정</div>
             <div className="text-lg font-bold text-[#F2A003] mb-2">
-              {formData.amount || '0'} {formData.currency}
+              {amount || '0'} {selectedCurrency}
             </div>
             <div className="text-xs text-gray-300">
-              수신자: {formData.recipientName || formData.recipientAddress.slice(0, 10) + '...' || '미입력'}
+              수신자: {selectedFriend?.name || '미선택'}
             </div>
             <div className="text-xs text-gray-500 mt-1">
               수수료: 약 0.000012 XRP
@@ -438,11 +495,58 @@ export default function EscrowPaymentPage() {
         {/* 생성 버튼 */}
         <Button
           onClick={createEscrow}
-          disabled={isLoading || !formData.recipientAddress || !formData.amount}
+          disabled={isLoading || !selectedFriend || !amount}
           className="w-full bg-[#F2A003] hover:bg-[#E09400] disabled:bg-gray-600"
         >
           {isLoading ? '생성 중...' : 'Escrow 생성하기'}
         </Button>
+
+        {/* 친구 선택 모달 */}
+        {showFriendSelector && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-[#2A2A2A] p-6 rounded-lg max-w-sm w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">친구 선택</h3>
+                <button
+                  onClick={() => setShowFriendSelector(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {friends.length > 0 ? (
+                  friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      onClick={() => selectFriend(friend)}
+                      className="w-full p-3 bg-[#1A1A1A] rounded-lg hover:bg-[#3A3A3A] transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-[#F2A003] rounded-full flex items-center justify-center">
+                          <span className="text-black font-bold">{friend.name.charAt(0)}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">{friend.name}</div>
+                          <div className="text-sm text-gray-400">{friend.phoneNumber}</div>
+                        </div>
+                        {friend.isOnline && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <div className="text-4xl mb-2">👥</div>
+                    <div>등록된 친구가 없습니다</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,17 +11,17 @@ export interface MockToken {
 // XRPL Devnet 실제 토큰 정의 (4종)
 export const MOCK_TOKENS: MockToken[] = [
   {
-    currency: 'USD',
-    issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX', // Devnet USD - 안정적인 AMM 풀 보유
-    name: 'Devnet USD',
-    symbol: 'USD',
+    currency: 'DALLAR',
+    issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX', // Devnet DALLAR - 안정적인 AMM 풀 보유
+    name: 'DALLAR Stablecoin',
+    symbol: 'DALLAR',
     decimals: 2
   },
   {
-    currency: 'CNY',
-    issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x', // Devnet CNY - 활성 AMM 풀
-    name: 'Devnet CNY',
-    symbol: 'CNY',
+    currency: 'KRW',
+    issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x', // 한화 스테이블토큰 - 활성 AMM 풀
+    name: 'Korean Won Stablecoin',
+    symbol: 'KRW',
     decimals: 2
   },
   {

@@ -12,7 +12,7 @@ export default function SwapPage() {
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [fromCurrency, setFromCurrency] = useState("XRP");
-  const [toCurrency, setToCurrency] = useState("USD");
+  const [toCurrency, setToCurrency] = useState("DALLAR");
   const [isLoading, setIsLoading] = useState(false);
   const [slippage, setSlippage] = useState("0.5");
   const [priceImpact, setPriceImpact] = useState("0");
@@ -344,7 +344,7 @@ export default function SwapPage() {
         <Card className="mt-4 p-4 bg-blue-900/20 border-blue-700">
           <h3 className="text-blue-400 font-semibold mb-2 text-sm">🌐 XRPL Devnet 실제 AMM 풀</h3>
           <ul className="text-blue-300 text-xs space-y-1">
-            <li>• 실제 XRPL Devnet AMM 풀 사용 (USD, CNY 활성)</li>
+            <li>• 실제 XRPL Devnet AMM 풀 사용 (DALLAR, KRW 활성)</li>
             <li>• 실제 토큰 발행자와 AMM 프로토콜 연동</li>
             <li>• Trust Line 설정 후 실제 토큰 스왑 가능</li>
             <li>• 프로토콜 레벨에서 동작하는 네이티브 AMM</li>
