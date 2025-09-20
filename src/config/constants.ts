@@ -31,7 +31,7 @@ export const WALLET_CONSTANTS = {
 
 // 가상자산 상수
 export const ASSET_CONSTANTS = {
-  DEFAULT_ENABLED_ASSETS: ['XRP', 'KRW', 'USD', 'CNY', 'EUR'],
+  DEFAULT_ENABLED_ASSETS: ['XRP', 'USD', 'CNY', 'EUR'], // KRW 제거 - 실제 지갑에 없음
   STORAGE_KEY: 'enabledAssets'
 } as const;
 

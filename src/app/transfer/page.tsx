@@ -171,6 +171,32 @@ function TransferContent() {
       walletPrivateKeys: selectedWallet?.privateKeys
     });
 
+    // 추가 상세 디버그 로그
+    if (selectedWallet) {
+      console.log('📋 지갑 상세 정보:', {
+        walletKeys: Object.keys(selectedWallet),
+        addressesType: typeof selectedWallet.addresses,
+        privateKeysType: typeof selectedWallet.privateKeys,
+        fullWallet: selectedWallet
+      });
+
+      if (selectedWallet.addresses) {
+        console.log('📍 주소 정보:', {
+          addressKeys: Object.keys(selectedWallet.addresses),
+          xrpAddress: selectedWallet.addresses.XRP,
+          xrpAddressExists: !!selectedWallet.addresses.XRP
+        });
+      }
+
+      if (selectedWallet.privateKeys) {
+        console.log('🔑 개인키 정보:', {
+          privateKeyKeys: Object.keys(selectedWallet.privateKeys),
+          xrpPrivateKeyExists: !!selectedWallet.privateKeys.XRP,
+          xrpPrivateKeyLength: selectedWallet.privateKeys.XRP?.length || 0
+        });
+      }
+    }
+
     if (!selectedWallet) {
       console.log('❌ 선택된 지갑 없음');
       return [];
@@ -178,7 +204,15 @@ function TransferContent() {
 
     if (!enabledAssets.length) {
       console.log('❌ 활성화된 자산 없음, 기본값 사용');
-      return ['XRP']; // 기본적으로 XRP는 항상 사용 가능
+      console.log('⚠️ enabledAssets가 비어있음, XRP 강제 반환 시도');
+      // enabledAssets가 비어있어도 XRP가 실제로 있는지 확인
+      if (selectedWallet.addresses?.XRP && selectedWallet.privateKeys?.XRP) {
+        console.log('✅ XRP 발견 - 강제 반환');
+        return ['XRP'];
+      } else {
+        console.log('❌ XRP 주소나 개인키가 없음');
+        return [];
+      }
     }
 
     const availableAssets = enabledAssets.filter(asset => {
@@ -192,23 +226,28 @@ function TransferContent() {
         privateKeyExists: !!hasPrivateKey
       });
 
-      // XRP는 항상 포함 (주소나 개인키가 있으면)
-      if (asset === 'XRP') {
-        return hasAddress || hasPrivateKey;
+      // 실제로 주소와 개인키가 모두 있는 자산만 전송 가능
+      const isAvailable = hasAddress && hasPrivateKey;
+
+      if (isAvailable) {
+        console.log(`✅ ${asset} 전송 가능 - 주소와 개인키 모두 존재`);
+      } else {
+        console.log(`❌ ${asset} 전송 불가 - 주소(${!!hasAddress}) 또는 개인키(${!!hasPrivateKey}) 없음`);
       }
 
-      return hasAddress && hasPrivateKey;
+      return isAvailable;
     });
 
     console.log('✅ 사용 가능한 자산:', availableAssets);
 
-    // 빈 배열이면 XRP를 기본으로 추가
-    if (availableAssets.length === 0) {
-      console.log('⚠️ 사용 가능한 자산이 없어서 XRP 기본 추가');
-      return ['XRP'];
+    // 주소와 개인키가 모두 있는 모든 자산 반환
+    if (availableAssets.length > 0) {
+      console.log('🎯 최종 반환 자산:', availableAssets);
+      return availableAssets;
     }
 
-    return availableAssets;
+    console.log('⚠️ 전송 가능한 자산이 없음');
+    return [];
   };
 
   const availableCurrencies = getAvailableCurrencies();
