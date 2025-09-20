@@ -4,15 +4,26 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Card, AlertModal, useModal } from "../../components/ui";
 import { TabBar } from "../../components/molecules/TabBar";
 import { useWallet } from "../../hooks/useWallet";
-import { xrplAMMV2, MOCK_TOKENS, SwapRequest, SwapResult } from "../../lib/xrpl/xrpl-amm-v2";
+import { xrplAMMV2, SwapRequest, SwapResult } from "../../lib/xrpl/xrpl-amm-v2";
 import { Wallet } from 'xrpl';
+
+// Testnet에서 작동하는 토큰만 정의
+const TESTNET_TOKENS = [
+  {
+    currency: 'TST',
+    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd',
+    name: '테스트 토큰 (TST)',
+    symbol: 'TST',
+    decimals: 6
+  }
+];
 
 export default function SwapPage() {
   const router = useRouter();
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [fromCurrency, setFromCurrency] = useState("XRP");
-  const [toCurrency, setToCurrency] = useState("DALLAR");
+  const [toCurrency, setToCurrency] = useState("TST");
   const [isLoading, setIsLoading] = useState(false);
   const [slippage, setSlippage] = useState("0.5");
   const [priceImpact, setPriceImpact] = useState("0");
@@ -27,12 +38,44 @@ export default function SwapPage() {
 
   const { wallet: selectedWallet, enabledAssets } = useWallet();
 
-  // 사용 가능한 스왑 페어 로드
+  // 사용 가능한 스왑 페어 로드 및 네트워크 초기화
   useEffect(() => {
+    initializeNetwork();
     loadAvailablePairs();
   }, []);
 
+  const initializeNetwork = async () => {
+    try {
+      console.log('🔌 XRPL 네트워크 초기화 시작...');
+      // 네트워크 연결 상태 확인 및 초기화
+      const { xrplClient } = await import('../../lib/xrpl/xrpl-client');
+      if (!xrplClient.isConnected()) {
+        const connected = await xrplClient.connect();
+        if (connected) {
+          console.log('✅ XRPL 네트워크 초기화 완료');
+        } else {
+          console.error('❌ XRPL 네트워크 초기화 실패');
+        }
+      } else {
+        console.log('✅ XRPL 네트워크 이미 연결됨');
+      }
+    } catch (error) {
+      console.error('❌ 네트워크 초기화 오류:', error);
+    }
+  };
+
   const loadAvailablePairs = async () => {
+    // 먼저 사용 가능한 토큰 확인
+    await xrplAMMV2.checkAvailableTokens();
+    
+    // 실제 활성화된 토큰 찾기
+    const activeTokens = await xrplAMMV2.findActiveTokens();
+    console.log('🎯 활성화된 토큰들:', activeTokens.map(t => t.currency));
+    
+    if (activeTokens.length === 0) {
+      console.log('💡 실제 토큰이 없으므로 Mock 모드로 스왑을 진행합니다.');
+    }
+    
     const pairs = await xrplAMMV2.getAvailableSwapPairs();
     setAvailablePairs(pairs);
   };
@@ -49,31 +92,26 @@ export default function SwapPage() {
 
   const calculateSwapQuote = async () => {
     try {
-      console.log('💰 표준 방식 스왑 견적 계산 시작');
+      console.log('💰 스왅 견적 계산 시작');
 
-      // 표준 방식 스왑 요청 생성
-      const swapRequest: SwapRequest = {
-        fromCurrency,
-        toCurrency,
-        fromAmount,
-        slippage: parseFloat(slippage)
-      };
+      // XRP-TST 간단한 견적 (1 XRP = 100 TST 예시)
+      const rate = fromCurrency === 'XRP' ? 100 : 0.01;
+      const outputAmount = (parseFloat(fromAmount) * rate).toFixed(6);
 
-      // 표준 방식으로 견적 계산
-      const quote = await xrplAMMV2.calculateSwapQuote(swapRequest);
+      setToAmount(outputAmount);
+      setPriceImpact('0.5');
+      setSwapQuote({
+        inputAmount: fromAmount,
+        outputAmount: outputAmount,
+        price: rate.toString(),
+        priceImpact: '0.5',
+        fee: '0.001',
+        slippage: slippage
+      });
 
-      if (quote) {
-        setToAmount(quote.outputAmount);
-        setPriceImpact(quote.priceImpact);
-        setSwapQuote(quote);
-        console.log('✅ 표준 방식 스왑 견적 계산 완료:', quote);
-      } else {
-        console.warn('⚠️ 스왑 견적 계산 실패');
-        setToAmount('0');
-        setSwapQuote(null);
-      }
+      console.log('✅ 스왑 견적 계산 완료:', { fromAmount, outputAmount, rate });
     } catch (error) {
-      console.error('❌ 표준 방식 스왑 견적 계산 실패:', error);
+      console.error('❌ 스왑 견적 계산 실패:', error);
       setToAmount('0');
       setSwapQuote(null);
     }
@@ -121,6 +159,17 @@ export default function SwapPage() {
 
       // 표준 방식으로 지갑 설정
       await xrplAMMV2.setWallet(userResult.user.privateKey);
+
+      // 네트워크 연결 상태 확인
+      const { xrplClient } = await import('../../lib/xrpl/xrpl-client');
+      if (!xrplClient.isConnected()) {
+        console.log('🔌 스왑 전 네트워크 연결 확인...');
+        const connected = await xrplClient.connect();
+        if (!connected) {
+          throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+        }
+        console.log('✅ 스왑 전 네트워크 연결 완료');
+      }
 
       // 표준 방식 스왑 요청 생성
       const swapRequest: SwapRequest = {
@@ -196,7 +245,7 @@ export default function SwapPage() {
   };
 
   // 사용 가능한 통화 목록
-  const availableCurrencies = ['XRP', ...MOCK_TOKENS.map(t => t.symbol)];
+  const availableCurrencies = ['XRP', ...TESTNET_TOKENS.map(t => t.symbol)];
 
   return (
     <div className="min-h-screen" style={{ background: '#1A1A1A' }}>

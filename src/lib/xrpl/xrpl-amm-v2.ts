@@ -9,33 +9,12 @@ export interface MockToken {
   decimals: number;
 }
 
-// XRPL Devnet 실제 토큰 정의 (표준 예제 기반)
+// XRPL Testnet 실제 토큰 정의 (TST만)
 export const MOCK_TOKENS: MockToken[] = [
   {
-    currency: 'DALLAR',
-    issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX', // Devnet DALLAR - 실제 AMM 풀 보유
-    name: 'DALLAR Stablecoin',
-    symbol: 'DALLAR',
-    decimals: 2
-  },
-  {
-    currency: 'KRW',
-    issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x', // 한화 스테이블토큰 - 활성 AMM 풀
-    name: 'Korean Won Stablecoin',
-    symbol: 'KRW',
-    decimals: 2
-  },
-  {
-    currency: 'EUR',
-    issuer: 'rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj', // Devnet EUR
-    name: 'Devnet EUR',
-    symbol: 'EUR',
-    decimals: 2
-  },
-  {
     currency: 'TST',
-    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Devnet Test Token
-    name: 'Devnet Test Token',
+    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Testnet Test Token - 실제 활성화된 토큰
+    name: 'Testnet Test Token',
     symbol: 'TST',
     decimals: 6
   }
@@ -124,9 +103,16 @@ export class XRPLAMMManagerV2 {
 
   // 표준 예제 기반 AMM 정보 조회
   async getAMMInfo(fromCurrency: string, toCurrency: string): Promise<AMMPoolInfo | null> {
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        console.error('❌ XRPL 네트워크 연결에 실패했습니다.');
+        return null;
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
@@ -160,6 +146,16 @@ export class XRPLAMMManagerV2 {
       }
     } catch (error) {
       console.error('❌ AMM 정보 조회 실패:', error);
+      
+      // 특정 에러에 대한 더 자세한 정보 제공
+      if (error instanceof Error) {
+        if (error.message.includes('Account not found')) {
+          console.log('💡 계정이 존재하지 않습니다. 토큰 발행자가 활성화되지 않았을 수 있습니다.');
+        } else if (error.message.includes('Invalid parameters')) {
+          console.log('💡 잘못된 매개변수입니다. 토큰 정보를 확인해주세요.');
+        }
+      }
+      
       return null;
     }
   }
@@ -173,8 +169,7 @@ export class XRPLAMMManagerV2 {
       const ammInfo = await this.getAMMInfo(request.fromCurrency, request.toCurrency);
       
       if (!ammInfo) {
-        console.log('⚠️ AMM 풀이 없어 Mock 견적 사용');
-        return this.calculateMockQuote(request);
+        throw new Error('해당 토큰 쌍에 대한 AMM 풀이 존재하지 않습니다.');
       }
 
       // 실제 AMM 풀 기반 견적 계산
@@ -212,7 +207,7 @@ export class XRPLAMMManagerV2 {
       };
     } catch (error) {
       console.error('❌ 스왑 견적 계산 실패:', error);
-      return this.calculateMockQuote(request);
+      throw error;
     }
   }
 
@@ -222,13 +217,25 @@ export class XRPLAMMManagerV2 {
       throw new Error('지갑이 설정되지 않았습니다.');
     }
 
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
       console.log(`🔄 표준 방식 스왑 실행: ${request.fromAmount} ${request.fromCurrency} → ${request.toCurrency}`);
+
+      // 토큰 발행자 계정 존재 여부 확인
+      const tokenValidation = await this.validateTokenAccounts(request.fromCurrency, request.toCurrency);
+      if (!tokenValidation.valid) {
+        throw new Error(`토큰 발행자 계정이 존재하지 않음: ${tokenValidation.error}`);
+      }
 
       // 표준 예제 방식의 Payment 트랜잭션 생성 (스왑용)
       const payment: Payment = {
@@ -292,24 +299,19 @@ export class XRPLAMMManagerV2 {
 
     } catch (error) {
       console.error('❌ 표준 방식 스왑 실패:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류'
-      };
+      throw error;
     }
   }
 
   // 사용 가능한 스왑 페어 조회
   async getAvailableSwapPairs(): Promise<Array<{ from: string; to: string; available: boolean }>> {
     const pairs = [
-      { from: 'XRP', to: 'DALLAR' },
-      { from: 'XRP', to: 'KRW' },
-      { from: 'XRP', to: 'EUR' },
-      { from: 'DALLAR', to: 'XRP' },
-      { from: 'KRW', to: 'XRP' },
-      { from: 'EUR', to: 'XRP' },
-      { from: 'DALLAR', to: 'KRW' },
-      { from: 'KRW', to: 'DALLAR' }
+      { from: 'XRP', to: 'TST' },
+      { from: 'XRP', to: 'USD' },
+      { from: 'TST', to: 'XRP' },
+      { from: 'USD', to: 'XRP' },
+      { from: 'TST', to: 'USD' },
+      { from: 'USD', to: 'TST' }
     ];
 
     const availablePairs = [];
@@ -324,36 +326,94 @@ export class XRPLAMMManagerV2 {
     return availablePairs;
   }
 
-  // Mock 견적 계산 (AMM 풀이 없을 때)
-  private calculateMockQuote(request: SwapRequest): SwapQuote {
-    const fromAmount = parseFloat(request.fromAmount);
-    let outputAmount = fromAmount;
 
-    // 간단한 Mock 환율 적용
-    const rates: { [key: string]: number } = {
-      'DALLAR': 1.0,
-      'KRW': 1300.0,
-      'EUR': 0.85,
-      'TST': 0.1
-    };
+  // 실제 Testnet에서 사용 가능한 토큰 확인
+  async checkAvailableTokens(): Promise<void> {
+    console.log('🔍 Testnet에서 사용 가능한 토큰 확인 중...');
 
-    if (request.fromCurrency === 'XRP') {
-      outputAmount = fromAmount * (rates[request.toCurrency] || 1);
-    } else if (request.toCurrency === 'XRP') {
-      outputAmount = fromAmount / (rates[request.fromCurrency] || 1);
-    } else {
-      outputAmount = fromAmount * (rates[request.toCurrency] / rates[request.fromCurrency]);
+    // 모든 토큰이 같은 발행자를 사용하므로 하나만 확인
+    const issuer = 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd';
+
+    try {
+      const accountInfo = await this.client!.request({
+        command: 'account_info',
+        account: issuer
+      });
+
+      if (accountInfo.result.account_data) {
+        console.log(`✅ 발행자 활성화됨: ${issuer}`);
+        console.log(`📝 지원 토큰들: ${MOCK_TOKENS.map(t => t.currency).join(', ')}`);
+
+        // TrustLine 확인
+        try {
+          const trustLines = await this.client!.request({
+            command: 'account_lines',
+            account: issuer
+          });
+          console.log(`📊 총 TrustLines: ${trustLines.result.lines?.length || 0}`);
+        } catch (trustError) {
+          console.log(`⚠️ TrustLine 조회 실패`);
+        }
+      }
+    } catch (error) {
+      console.log(`❌ 발행자 비활성화됨: ${issuer}`);
+      throw new Error('토큰 발행자가 활성화되지 않았습니다.');
+    }
+  }
+
+  // Testnet에서 실제 사용 가능한 토큰 찾기
+  async findActiveTokens(): Promise<MockToken[]> {
+    console.log('🔍 Testnet에서 실제 활성화된 토큰 찾는 중...');
+
+    const activeTokens: MockToken[] = [];
+
+    for (const token of MOCK_TOKENS) {
+      try {
+        const accountInfo = await this.client!.request({
+          command: 'account_info',
+          account: token.issuer
+        });
+
+        if (accountInfo.result.account_data) {
+          activeTokens.push(token);
+          console.log(`✅ 활성 토큰 발견: ${token.currency}`);
+        }
+      } catch (error) {
+        console.log(`❌ 비활성 토큰: ${token.currency}`);
+      }
     }
 
-    return {
-      inputAmount: fromAmount.toFixed(6),
-      outputAmount: outputAmount.toFixed(6),
-      price: (fromAmount / outputAmount).toFixed(6),
-      priceImpact: '0.00',
-      fee: (fromAmount * 0.003).toFixed(6), // 0.3% 수수료
-      slippage: '0.50'
-    };
+    console.log(`📊 총 ${activeTokens.length}개의 활성 토큰 발견`);
+    return activeTokens;
   }
+
+  // 토큰 발행자 계정 존재 여부 검증
+  async validateTokenAccounts(fromCurrency: string, toCurrency: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      // 모든 토큰이 같은 발행자를 사용하므로 하나만 확인
+      const issuer = 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd';
+      
+      // XRP가 아닌 토큰이 있는 경우에만 발행자 확인
+      if (fromCurrency !== 'XRP' || toCurrency !== 'XRP') {
+        try {
+          await this.client!.request({
+            command: 'account_info',
+            account: issuer
+          });
+          console.log(`✅ 토큰 발행자 계정 활성화됨: ${issuer}`);
+          return { valid: true };
+        } catch (error) {
+          console.log(`❌ 토큰 발행자 계정이 존재하지 않음: ${issuer}`);
+          return { valid: false, error: `토큰 발행자 계정이 존재하지 않음: ${issuer}` };
+        }
+      }
+
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, error: `토큰 검증 실패: ${error}` };
+    }
+  }
+
 
   // 토큰 발행자 주소 반환
   private getTokenIssuer(currency: string): string {

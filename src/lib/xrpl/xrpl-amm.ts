@@ -338,4 +338,4 @@ export class XRPLAMMManager {
 }
 
 // Singleton instance
-export const xrplAMM = new XRPLAMMManager('devnet');
+export const xrplAMM = new XRPLAMMManager('testnet');

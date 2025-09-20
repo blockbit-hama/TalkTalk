@@ -51,18 +51,15 @@ export default function AddAssetsPage() {
   const { updateEnabledAssets, loadEnabledAssets } = useEnabledAssets();
   const { generateNewAssetKey } = useWallet();
 
-  // XRPL Devnet 실제 자산 목록
+  // XRPL Testnet 실제 자산 목록 (테스트넷에서 작동하는 자산만)
   const supportedAssets = [
-    { id: "xrp", symbol: "XRP", name: "XRP Ledger", icon: "X", networkType: "XRPL Devnet", issuer: null },
-    { id: "devnet-usd", symbol: "USD", name: "미국 달러 (USD)", icon: "$", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rJgqyVQrzRQTQREVTYK21843LR7vb7LapX" },
-    { id: "devnet-cny", symbol: "CNY", name: "중국 위안 (CNY)", icon: "¥", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x" },
-    { id: "devnet-eur", symbol: "EUR", name: "유로화 (EUR)", icon: "€", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj" },
-    { id: "devnet-tst", symbol: "TST", name: "테스트 토큰 (TST)", icon: "T", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
+    { id: "xrp", symbol: "XRP", name: "XRP Ledger", icon: "X", networkType: "XRPL Testnet", issuer: null },
+    { id: "testnet-tst", symbol: "TST", name: "테스트 토큰 (TST)", icon: "T", networkType: "XRPL Testnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
   ];
 
   // XRPL 자산 가격 정보 로드
   const loadAssetPrices = async () => {
-    // XRP 가격만 조회하고 Devnet 토큰은 고정 가격 사용
+    // XRP 가격만 조회하고 Testnet 토큰은 고정 가격 사용
     const cryptoPrices = await getCryptoPrices(['XRP']);
 
     // 가격 정보를 assets 배열에 매핑
@@ -70,21 +67,18 @@ export default function AddAssetsPage() {
       let price = '$0.00';
       let change = '0.00%';
       let changeColor = '#A0A0B0';
-      
+
       if (asset.symbol === 'XRP') {
         const priceData = cryptoPrices.find(price => price.symbol === 'XRP');
         price = priceData ? formatPrice(priceData.price) : '$0.50';
         change = priceData ? formatChangePercentage(priceData.priceChangePercentage24h) : '0.00%';
         changeColor = priceData ? getChangeColor(priceData.priceChangePercentage24h) : '#A0A0B0';
       } else {
-        // Devnet 토큰들은 고정 가격
-        const devnetPrices: { [key: string]: string } = {
-          'USD': '$1.00',
-          'EUR': '$1.10',
-          'CNY': '$0.14',
+        // Testnet 토큰들은 고정 가격
+        const testnetPrices: { [key: string]: string } = {
           'TST': '$0.10',
         };
-        price = devnetPrices[asset.symbol] || '$1.00';
+        price = testnetPrices[asset.symbol] || '$0.10';
         change = '0.00%';
         changeColor = '#6FCF97';
       }
@@ -421,22 +415,12 @@ export default function AddAssetsPage() {
                     }}
                   >
                     {asset.icon}
-                    {asset.symbol !== 'XRP' && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#F2A003] rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">M</span>
-                      </div>
-                    )}
                   </div>
                   
                   {/* 자산 정보 */}
                   <div>
-                    <div className="text-white font-semibold flex items-center gap-2">
+                    <div className="text-white font-semibold">
                       {asset.name}
-                      {asset.symbol !== 'XRP' && (
-                        <span className="text-xs bg-[#F2A003] text-white px-2 py-1 rounded-full">
-                          MOCK
-                        </span>
-                      )}
                     </div>
                     <div className="text-gray-400 text-sm">{asset.symbol}</div>
                     {asset.networkType && (

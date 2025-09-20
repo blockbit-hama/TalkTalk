@@ -213,14 +213,14 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
           const assetsArray = parsedAssets.map((item: any) => item.symbol || item).filter(Boolean);
           setEnabledAssets(assetsArray);
         } else {
-          const defaultAssets = ['XRP', 'KRW', 'USD', 'CNY', 'EUR'];
+          const defaultAssets = ['XRP', 'TST'];
           setEnabledAssets(defaultAssets);
           // localStorage에 저장
           const defaultData = defaultAssets.map(symbol => ({ symbol }));
           localStorage.setItem('enabledAssets', JSON.stringify(defaultData));
         }
       } catch (error) {
-        setEnabledAssets(['XRP', 'KRW', 'USD', 'CNY', 'EUR']);
+        setEnabledAssets(['XRP', 'TST']);
       }
     }
   }, []);
@@ -251,15 +251,15 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
             </div>
           )}
 
-          {enabledAssets.includes('KRW') && (
+          {enabledAssets.includes('TST') && (
             <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
               <KRWIcon size={56} />
               <div className="balance-card-inner" style={{ flex: 1 }}>
-                <span className="balance-card-name">한국 원화 (KRW)</span>
+                <span className="balance-card-name">테스트 토큰 (TST)</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                 <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                  0.000000 KRW
+                  0.000000 TST
                 </div>
                 <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
                   $0.00
@@ -268,56 +268,8 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
             </div>
           )}
 
-          {enabledAssets.includes('USD') && (
-            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
-              <USDIcon size={56} />
-              <div className="balance-card-inner" style={{ flex: 1 }}>
-                <span className="balance-card-name">미국 달러 (USD)</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                  0.000000 USD
-                </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
-                  $0.00
-                </div>
-              </div>
-            </div>
-          )}
 
-          {enabledAssets.includes('CNY') && (
-            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
-              <CNYIcon size={56} />
-              <div className="balance-card-inner" style={{ flex: 1 }}>
-                <span className="balance-card-name">중국 위안 (CNY)</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                  0.000000 CNY
-                </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
-                  $0.00
-                </div>
-              </div>
-            </div>
-          )}
 
-          {enabledAssets.includes('EUR') && (
-            <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
-              <EURIcon size={56} />
-              <div className="balance-card-inner" style={{ flex: 1 }}>
-                <span className="balance-card-name">유로화 (EUR)</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                  0.000000 EUR
-                </div>
-                <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
-                  $0.00
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

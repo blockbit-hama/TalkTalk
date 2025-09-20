@@ -5,7 +5,7 @@
  * XRPL 프로토콜 레벨에서 지원하는 일괄 트랜잭션으로
  * 여러 개의 지급을 하나의 트랜잭션으로 묶어 처리합니다.
  *
- * GitHub Gist: https://gist.github.com/YOUR_GITHUB_USERNAME/xrpl-batch-v2
+ * GitHub Gist: https://gist.github.com/blockbit-hama/(수동으로 Gist 생성 필요)
  *
  * 주요 기능:
  * 1. Independent Mode - 각 지급이 독립적으로 실행

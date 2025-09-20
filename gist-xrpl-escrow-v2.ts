@@ -4,7 +4,7 @@
  * 이 코드는 XRPL의 네이티브 Escrow 기능을 구현합니다.
  * 시간 기반 조건부 지급으로 특정 시간이 되면 자동으로 자금을 수령할 수 있습니다.
  *
- * GitHub Gist: https://gist.github.com/YOUR_GITHUB_USERNAME/xrpl-escrow-v2
+ * GitHub Gist: https://gist.github.com/blockbit-hama/(수동으로 Gist 생성 필요)
  *
  * 주요 기능:
  * 1. XRP Escrow 생성 (시간 기반 조건)

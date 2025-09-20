@@ -377,6 +377,16 @@ class XRPLClient {
         break;
     }
   }
+
+  // 연결된 클라이언트 반환
+  getClient(): Client | null {
+    return this.client;
+  }
+
+  // 연결 상태 확인
+  isConnected(): boolean {
+    return this.client ? this.client.isConnected() : false;
+  }
 }
 
 // Singleton instance

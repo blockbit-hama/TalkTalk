@@ -400,8 +400,8 @@ export default function Home() {
           try {
             console.log(`${symbol} 주소 생성 중...`);
 
-            // XRPL 토큰들은 XRP 주소와 동일한 주소를 사용
-            if (['USD', 'CNY', 'EUR', 'TST'].includes(symbol)) {
+            // XRPL 토큰들은 XRP 주소와 동일한 주소를 사용 (TST만 지원)
+            if (['TST'].includes(symbol)) {
               if (wallet.addresses.XRP && wallet.privateKeys.XRP) {
                 wallet.addresses[symbol] = wallet.addresses.XRP;
                 wallet.privateKeys[symbol] = wallet.privateKeys.XRP;
@@ -536,7 +536,7 @@ export default function Home() {
         return;
       }
 
-      // Testnet Faucet 요청 (현재 네트워크가 testnet이므로)
+      // Testnet Faucet 요청 (네트워크를 TESTNET으로 통일)
       console.log('XRPL Testnet Faucet API 호출 중...');
       const result = await xrplFaucet.requestTestnetXRP(selectedWallet.addresses.XRP);
       console.log('Faucet API 응답:', result);

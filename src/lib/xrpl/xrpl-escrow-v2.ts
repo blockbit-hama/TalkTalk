@@ -73,9 +73,15 @@ export class XRPLEScrowManagerV2 {
       throw new Error('지갑이 설정되지 않았습니다.');
     }
 
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
@@ -156,9 +162,15 @@ export class XRPLEScrowManagerV2 {
       throw new Error('지갑이 설정되지 않았습니다.');
     }
 
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
@@ -256,9 +268,15 @@ export class XRPLEScrowManagerV2 {
       throw new Error('지갑이 설정되지 않았습니다.');
     }
 
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
@@ -315,9 +333,15 @@ export class XRPLEScrowManagerV2 {
       throw new Error('지갑이 설정되지 않았습니다.');
     }
 
-    if (!this.client) {
-      await xrplClient.connect();
+    // 클라이언트 연결 상태 확인 및 연결
+    if (!this.client || !this.client.isConnected()) {
+      console.log('🔌 XRPL 클라이언트 연결 시도...');
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결에 실패했습니다.');
+      }
       this.client = xrplClient.getClient();
+      console.log('✅ XRPL 클라이언트 연결 성공');
     }
 
     try {
