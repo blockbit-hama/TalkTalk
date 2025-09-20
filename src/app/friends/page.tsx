@@ -32,17 +32,28 @@ export default function FriendsPage() {
 
   const loadFriends = async () => {
     try {
-      // useWallet에서 현재 사용자 주소 가져오기
+      // 현재 사용자 전화번호 가져오기 (지갑 주소로 조회)
       if (!wallet?.addresses?.XRP) {
         console.warn('지갑 정보가 아직 로드되지 않았습니다.');
         return;
       }
 
-      const currentUserId = wallet.addresses.XRP;
-      console.log(`[${new Date().toLocaleTimeString()}] 친구 목록 조회 시작:`, currentUserId);
+      const currentWalletAddress = wallet.addresses.XRP;
+      console.log(`[${new Date().toLocaleTimeString()}] 친구 목록 조회 시작:`, currentWalletAddress);
 
-      // 서버에서 친구 목록 조회
-      const response = await fetch(`/api/friends?userId=${encodeURIComponent(currentUserId)}`);
+      // 1. 지갑 주소로 사용자 전화번호 조회
+      const userResponse = await fetch(`/api/phone-mapping?walletAddress=${encodeURIComponent(currentWalletAddress)}`);
+      const userResult = await userResponse.json();
+
+      if (!userResponse.ok || !userResult.success) {
+        throw new Error('사용자 정보를 찾을 수 없습니다.');
+      }
+
+      const currentUserPhone = userResult.user.phoneNumber;
+      console.log(`현재 사용자 전화번호: ${currentUserPhone}`);
+
+      // 2. 전화번호로 친구 목록 조회
+      const response = await fetch(`/api/friends?userPhone=${encodeURIComponent(currentUserPhone)}`);
       const result = await response.json();
 
       console.log(`[${new Date().toLocaleTimeString()}] 서버 응답:`, {
@@ -53,13 +64,13 @@ export default function FriendsPage() {
 
       if (response.ok && result.success) {
         // 서버 데이터를 친구 인터페이스 형식으로 변환
-        const serverFriends = result.friends.map((relationship: any) => ({
-          id: relationship.friendId,
-          name: relationship.friendName,
-          phoneNumber: relationship.friendPhone,
-          xrplAddress: relationship.friendAddress,
-          isOnline: relationship.isOnline,
-          lastSeen: new Date(relationship.lastSeen)
+        const serverFriends = result.friends.map((friend: any) => ({
+          id: friend.phoneNumber, // 전화번호를 ID로 사용
+          name: friend.userName,
+          phoneNumber: friend.phoneNumber,
+          xrplAddress: friend.walletAddress,
+          isOnline: friend.isOnline,
+          lastSeen: new Date(friend.lastSeen)
         }));
 
         // 이전 친구 수와 비교
@@ -82,66 +93,58 @@ export default function FriendsPage() {
 
 
   const addFriend = async () => {
-    if (!newFriendPhone || !newFriendName) {
-      alert('전화번호와 이름을 모두 입력해주세요.');
+    if (!newFriendPhone) {
+      alert('친구의 전화번호를 입력해주세요.');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      // useWallet에서 현재 사용자 주소 가져오기
+      // 현재 사용자 전화번호 가져오기 (지갑 주소로 조회)
       if (!wallet?.addresses?.XRP) {
         throw new Error('지갑 정보를 찾을 수 없습니다.');
       }
 
-      const currentUserId = wallet.addresses.XRP;
+      const currentWalletAddress = wallet.addresses.XRP;
 
-      // 1. 전화번호로 실제 지갑 주소 검색
-      const phoneSearchResponse = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(newFriendPhone)}`);
-      const phoneSearchResult = await phoneSearchResponse.json();
+      // 1. 현재 사용자 전화번호 조회
+      const userResponse = await fetch(`/api/phone-mapping?walletAddress=${encodeURIComponent(currentWalletAddress)}`);
+      const userResult = await userResponse.json();
 
-      let friendAddress: string;
-      let actualFriendName: string = newFriendName;
+      if (!userResponse.ok || !userResult.success) {
+        throw new Error('사용자 정보를 찾을 수 없습니다.');
+      }
 
-      if (phoneSearchResponse.ok && phoneSearchResult.success) {
-        // 전화번호에 등록된 실제 지갑 주소 사용
-        friendAddress = phoneSearchResult.walletAddress;
-        actualFriendName = phoneSearchResult.userName; // 등록된 실제 이름 사용
-        console.log(`✅ 전화번호로 친구 찾기 성공: ${actualFriendName} (${friendAddress})`);
-      } else {
-        // 등록된 사용자가 없으면 에러 처리
+      const currentUserPhone = userResult.user.phoneNumber;
+      console.log(`현재 사용자 전화번호: ${currentUserPhone}`);
+
+      // 2. 친구 전화번호로 사용자 존재 확인
+      const friendResponse = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(newFriendPhone)}`);
+      const friendResult = await friendResponse.json();
+
+      if (!friendResponse.ok || !friendResult.success) {
         throw new Error(`전화번호 ${newFriendPhone}는 등록되지 않은 사용자입니다. 먼저 해당 사용자가 앱에 가입해야 합니다.`);
       }
 
-      // 2. 친구 데이터 생성
-      const friendData: Friend = {
-        id: `friend_${Date.now()}`,
-        name: actualFriendName,
-        phoneNumber: newFriendPhone,
-        xrplAddress: friendAddress,
-        isOnline: Math.random() > 0.5,
-        lastSeen: new Date()
-      };
+      console.log(`✅ 친구 찾기 성공: ${friendResult.user.userName} (${friendResult.user.phoneNumber})`);
 
-      // 3. 서버에 친구 관계 등록
-      const friendResponse = await fetch('/api/friends', {
+      // 3. 서버에 친구 관계 등록 (전화번호 기반)
+      const addFriendResponse = await fetch('/api/friends', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: currentUserId,
-          friendId: friendData.id,
-          friendName: actualFriendName,
+          userPhone: currentUserPhone,
           friendPhone: newFriendPhone,
-          friendAddress: friendAddress
+          nickname: newFriendName || friendResult.user.userName
         }),
       });
 
-      const friendResult = await friendResponse.json();
+      const addFriendResult = await addFriendResponse.json();
 
-      if (friendResponse.ok && friendResult.success) {
+      if (addFriendResponse.ok && addFriendResult.success) {
         // 백그라운드에서 친구 목록 새로고침 먼저 진행
         await loadFriends();
 
@@ -150,9 +153,9 @@ export default function FriendsPage() {
         setNewFriendName("");
         setShowAddFriend(false);
 
-        alert(`${actualFriendName} 친구가 추가되었습니다!`);
+        alert(`${friendResult.user.userName} 친구가 추가되었습니다!`);
       } else {
-        throw new Error(friendResult.error || '친구 등록에 실패했습니다.');
+        throw new Error(addFriendResult.error || '친구 등록에 실패했습니다.');
       }
     } catch (error) {
       console.error('친구 추가 실패:', error);
@@ -162,18 +165,28 @@ export default function FriendsPage() {
     }
   };
 
-  const removeFriend = async (friendId: string) => {
+  const removeFriend = async (friendPhone: string) => {
     if (confirm('정말로 친구를 삭제하시겠습니까?')) {
       try {
-        // useWallet에서 현재 사용자 주소 가져오기
+        // 현재 사용자 전화번호 가져오기 (지갑 주소로 조회)
         if (!wallet?.addresses?.XRP) {
           throw new Error('지갑 정보를 찾을 수 없습니다.');
         }
 
-        const currentUserId = wallet.addresses.XRP;
+        const currentWalletAddress = wallet.addresses.XRP;
 
-        // 서버에서 친구 삭제
-        const response = await fetch(`/api/friends?userId=${encodeURIComponent(currentUserId)}&friendId=${encodeURIComponent(friendId)}`, {
+        // 현재 사용자 전화번호 조회
+        const userResponse = await fetch(`/api/phone-mapping?walletAddress=${encodeURIComponent(currentWalletAddress)}`);
+        const userResult = await userResponse.json();
+
+        if (!userResponse.ok || !userResult.success) {
+          throw new Error('사용자 정보를 찾을 수 없습니다.');
+        }
+
+        const currentUserPhone = userResult.user.phoneNumber;
+
+        // 서버에서 친구 삭제 (전화번호 기반)
+        const response = await fetch(`/api/friends?userPhone=${encodeURIComponent(currentUserPhone)}&friendPhone=${encodeURIComponent(friendPhone)}`, {
           method: 'DELETE',
         });
 
@@ -244,11 +257,11 @@ export default function FriendsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  이름
+                  별명 (선택사항)
                 </label>
                 <Input
                   type="text"
-                  placeholder="친구 이름"
+                  placeholder="친구 이름 (선택사항 - 별명으로 사용)"
                   value={newFriendName}
                   onChange={(e) => setNewFriendName(e.target.value)}
                   className="w-full"
@@ -349,7 +362,7 @@ export default function FriendsPage() {
                       💰 전송
                     </button>
                     <button
-                      onClick={() => removeFriend(friend.id)}
+                      onClick={() => removeFriend(friend.phoneNumber)}
                       className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
                     >
                       🗑️ 삭제

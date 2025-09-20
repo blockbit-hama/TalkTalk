@@ -1,4 +1,5 @@
-import { User, Friend, ChatRoom, Message, SendMessageRequest, CreateRoomRequest, AddFriendRequest } from '@/types/chat';
+import { User, Friend, ChatRoom, Message, SendMessageRequest, CreateRoomRequest, AddFriendRequest, UserAssets, TokenBalance } from '@/types/chat';
+import { kv } from '@vercel/kv';
 
 class InMemoryDatabase {
   private users: Map<string, User> = new Map();
@@ -6,6 +7,11 @@ class InMemoryDatabase {
   private chatRooms: Map<string, ChatRoom> = new Map();
   private messages: Map<string, Message[]> = new Map(); // roomId -> messages
   private onlineUsers: Set<string> = new Set();
+  
+  // Redis 연결 상태 확인
+  private isKVAvailable(): boolean {
+    return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  }
 
   constructor() {
     this.initializeDefaultData();

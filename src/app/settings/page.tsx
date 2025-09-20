@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TabBar } from "../../components/molecules/TabBar";
 import { deleteWallet } from "../../lib/wallet-utils";
@@ -11,6 +11,23 @@ export default function SettingsPage() {
 
   // 새로운 atoms hooks 사용
   const { walletList, refreshWalletList } = useWalletList();
+
+  // 전화번호 등록 모달 열기 이벤트 리스너
+  useEffect(() => {
+    const handleOpenPhoneModal = () => {
+      // 홈페이지로 이동하여 전화번호 등록 모달 열기
+      router.push('/');
+      // 약간의 지연 후 모달 열기
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('openPhoneModal'));
+      }, 100);
+    };
+
+    window.addEventListener('openPhoneModal', handleOpenPhoneModal);
+    return () => {
+      window.removeEventListener('openPhoneModal', handleOpenPhoneModal);
+    };
+  }, [router]);
 
   const handleDeleteWallet = (walletId: string) => {
     try {
@@ -27,10 +44,13 @@ export default function SettingsPage() {
       title: "지갑 관리",
       items: [
         {
-          label: "새 지갑 생성",
-          description: "새로운 HD 지갑을 생성합니다",
-          icon: "➕",
-          action: () => router.push('/create-wallet'),
+          label: "계정 등록",
+          description: "전화번호와 이름으로 계정을 등록합니다",
+          icon: "📱",
+          action: () => {
+            // 전화번호 등록 모달 열기
+            window.dispatchEvent(new CustomEvent('openPhoneModal'));
+          },
           color: "#F2A003"
         },
         {

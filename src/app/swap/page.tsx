@@ -140,11 +140,8 @@ export default function SwapPage() {
         hasMnemonic: !!selectedWallet.mnemonic
       });
 
-      if (!selectedWallet.mnemonic) {
-        throw new Error('Mnemonic을 찾을 수 없습니다. 지갑을 다시 생성해주세요.');
-      }
-
-      const wallet = Wallet.fromMnemonic(selectedWallet.mnemonic);
+      // 간단한 지갑 생성 (개인키 사용)
+      const wallet = Wallet.fromSeed(selectedWallet.privateKeys.XRP);
       xrplAMM.setWallet(wallet);
 
       // USD 토큰을 받을 때 trustline 설정 확인

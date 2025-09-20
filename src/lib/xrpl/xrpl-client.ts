@@ -5,8 +5,8 @@ class XRPLClient {
   private client: Client | null = null;
   private wallet: Wallet | null = null;
   private networkInfo: XRPLNetworkInfo = {
-    network: 'devnet',
-    server: 'wss://s.devnet.rippletest.net:51233',
+    network: 'testnet',
+    server: 'wss://s.altnet.rippletest.net:51233',
     fee: '0.000012',
     reserve: '10',
   };
@@ -339,6 +339,10 @@ class XRPLClient {
       console.error('Failed to estimate fee:', error);
       return this.networkInfo.fee;
     }
+  }
+
+  getClient(): Client | null {
+    return this.client;
   }
 
   getNetworkInfo(): XRPLNetworkInfo {

@@ -57,7 +57,7 @@ export default function TrustLinePage() {
         }
       }
 
-      // 지갑 설정
+      // 지갑 설정 (간단하게)
       const wallet = Wallet.fromSeed(selectedWallet.privateKeys.XRP);
       xrplAMM.setWallet(wallet);
 

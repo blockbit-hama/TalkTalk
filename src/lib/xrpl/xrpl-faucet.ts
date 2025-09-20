@@ -15,20 +15,20 @@ export class XRPLFaucet {
   private testnetFaucetUrl = 'https://faucet.altnet.rippletest.net/accounts';
 
   /**
-   * Devnet Faucet에서 XRP 충전 요청
+   * Devnet Faucet에서 XRP 충전 요청 (기존 주소로 직접 전송)
    */
   async requestDevnetXRP(address: string): Promise<FaucetResult> {
     try {
       console.log('Devnet Faucet XRP 요청:', address);
 
+      // 기존 주소로 직접 XRP 전송하는 방식으로 변경
       const response = await fetch(this.devnetFaucetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          destination: address,
-          amount: '1000' // 1000 XRP 요청
+          destination: address
         })
       });
 
@@ -40,10 +40,11 @@ export class XRPLFaucet {
 
       console.log('Faucet 응답:', data);
 
+      // 기존 주소를 그대로 사용
       return {
         success: true,
         account: {
-          classicAddress: data.account?.classicAddress || address,
+          classicAddress: address, // 기존 주소 사용
           xAddress: data.account?.xAddress || '',
           secret: data.account?.secret || ''
         },

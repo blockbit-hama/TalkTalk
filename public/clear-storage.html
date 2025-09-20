@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스토리지 초기화</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .button {
+            background-color: #dc3545;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .button:hover {
+            background-color: #c82333;
+        }
+        .success {
+            background-color: #28a745;
+        }
+        .success:hover {
+            background-color: #218838;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success-msg {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .storage-info {
+            text-align: left;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 스토리지 완전 초기화</h1>
+        <p>브라우저의 모든 로컬 데이터를 삭제합니다.</p>
+
+        <div id="status"></div>
+
+        <div class="storage-info">
+            <h3>현재 저장된 데이터:</h3>
+            <div id="storageData">로딩 중...</div>
+        </div>
+
+        <button class="button" onclick="clearLocalStorage()">
+            🗑️ localStorage 삭제
+        </button>
+
+        <button class="button" onclick="clearSessionStorage()">
+            🗑️ sessionStorage 삭제
+        </button>
+
+        <button class="button" onclick="clearAllData()">
+            🧨 모든 데이터 삭제
+        </button>
+
+        <button class="button success" onclick="refreshData()">
+            🔄 새로고침
+        </button>
+
+        <div style="margin-top: 30px;">
+            <h3>완료 후 해야 할 일:</h3>
+            <ol style="text-align: left;">
+                <li>브라우저를 완전히 닫기</li>
+                <li>다시 브라우저 열기</li>
+                <li>홈페이지로 이동하여 새로운 지갑 생성</li>
+                <li>사용자 등록 다시 하기</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type === 'success' ? 'success-msg' : type === 'error' ? 'error' : 'info'}`;
+            statusDiv.innerHTML = message;
+        }
+
+        function displayStorageData() {
+            const storageDiv = document.getElementById('storageData');
+            let data = '<strong>localStorage:</strong><br>';
+
+            if (localStorage.length === 0) {
+                data += '(비어있음)<br>';
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    data += `${key}: ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}<br>`;
+                }
+            }
+
+            data += '<br><strong>sessionStorage:</strong><br>';
+            if (sessionStorage.length === 0) {
+                data += '(비어있음)<br>';
+            } else {
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    const value = sessionStorage.getItem(key);
+                    data += `${key}: ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}<br>`;
+                }
+            }
+
+            storageDiv.innerHTML = data;
+        }
+
+        function clearLocalStorage() {
+            try {
+                const count = localStorage.length;
+                localStorage.clear();
+                showStatus(`✅ localStorage 삭제 완료 (${count}개 항목)`, 'success');
+                displayStorageData();
+            } catch (error) {
+                showStatus(`❌ localStorage 삭제 실패: ${error.message}`, 'error');
+            }
+        }
+
+        function clearSessionStorage() {
+            try {
+                const count = sessionStorage.length;
+                sessionStorage.clear();
+                showStatus(`✅ sessionStorage 삭제 완료 (${count}개 항목)`, 'success');
+                displayStorageData();
+            } catch (error) {
+                showStatus(`❌ sessionStorage 삭제 실패: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAllData() {
+            try {
+                const localCount = localStorage.length;
+                const sessionCount = sessionStorage.length;
+
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // IndexedDB도 삭제 시도
+                if ('indexedDB' in window) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(database => {
+                            indexedDB.deleteDatabase(database.name);
+                        });
+                    }).catch(console.error);
+                }
+
+                // 캐시도 삭제 시도
+                if ('caches' in window) {
+                    caches.keys().then(cacheNames => {
+                        cacheNames.forEach(cacheName => {
+                            caches.delete(cacheName);
+                        });
+                    }).catch(console.error);
+                }
+
+                showStatus(`✅ 모든 데이터 삭제 완료 (localStorage: ${localCount}개, sessionStorage: ${sessionCount}개)`, 'success');
+                displayStorageData();
+
+                setTimeout(() => {
+                    showStatus('🔄 3초 후 자동으로 홈페이지로 이동합니다...', 'info');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000);
+                }, 2000);
+            } catch (error) {
+                showStatus(`❌ 데이터 삭제 실패: ${error.message}`, 'error');
+            }
+        }
+
+        function refreshData() {
+            displayStorageData();
+            showStatus('🔄 데이터 새로고침 완료', 'info');
+        }
+
+        // 페이지 로드시 데이터 표시
+        window.onload = function() {
+            displayStorageData();
+            showStatus('📊 현재 저장된 데이터를 확인하세요', 'info');
+        };
+    </script>
+</body>
+</html>

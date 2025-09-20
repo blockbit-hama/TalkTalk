@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { getAllMappings } from '../phone-mapping/route';
 
+// 사용자 프로필 인터페이스
+interface UserProfile {
+  phoneNumber: string;
+  userName: string;
+  walletAddress: string;
+  assets?: {
+    xrp: {
+      balance: string;
+      address: string;
+    };
+    tokens: Array<{
+      currency: string;
+      issuer: string;
+      balance: string;
+      trustline?: boolean;
+    }>;
+  };
+  isOnline: boolean;
+  lastSeen: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 친구 관계 저장소
 interface FriendRelationship {
   userId: string; // 사용자 ID (보통 지갑 주소)
@@ -18,6 +41,21 @@ interface FriendRelationship {
 const isKVAvailable = () => {
   return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 };
+
+// 사용자 프로필 조회 함수
+async function getUserProfile(phoneNumber: string): Promise<UserProfile | null> {
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다.');
+  }
+
+  try {
+    const profile = await kv.get<UserProfile>(`user:${phoneNumber}`);
+    return profile;
+  } catch (error) {
+    console.error('❌ 사용자 프로필 조회 실패:', error);
+    throw new Error(`사용자 프로필 조회 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
 // 친구 관계 저장 함수 - Redis 전용
 async function saveFriendRelationships(userId: string, relationships: FriendRelationship[]): Promise<void> {
@@ -86,27 +124,58 @@ async function getAllFriendRelationships(): Promise<Array<[string, FriendRelatio
   }
 }
 
-// 사용자의 친구 목록 조회
+// 사용자의 친구 목록 조회 (전화번호 기반)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userPhone = searchParams.get('userPhone');
 
-    if (!userId) {
+    if (!userPhone) {
       return NextResponse.json(
-        { error: '사용자 ID가 필요합니다.' },
+        { error: '사용자 전화번호가 필요합니다.' },
         { status: 400 }
       );
     }
 
+    const cleanUserPhone = userPhone.replace(/[-\s]/g, '');
+    
+    // 전화번호 형식 검증
+    if (!/^01[0-9]{8,9}$/.test(cleanUserPhone)) {
+      return NextResponse.json(
+        { error: '올바른 전화번호 형식이 아닙니다. (010-XXXX-XXXX)' },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 존재 확인
+    const userProfile = await getUserProfile(cleanUserPhone);
+    if (!userProfile) {
+      return NextResponse.json(
+        { error: '사용자를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
     // 해당 사용자의 친구 목록 조회 (KV)
-    const userFriends = await getFriendRelationships(userId);
+    const userFriends = await getFriendRelationships(cleanUserPhone);
 
     return NextResponse.json({
       success: true,
-      friends: userFriends,
+      friends: userFriends.map(friend => ({
+        phoneNumber: friend.friendPhone,
+        userName: friend.friendName,
+        walletAddress: friend.friendAddress,
+        isOnline: friend.isOnline,
+        lastSeen: friend.lastSeen,
+        createdAt: friend.createdAt,
+      })),
       count: userFriends.length,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      user: {
+        phoneNumber: userProfile.phoneNumber,
+        userName: userProfile.userName,
+        isOnline: userProfile.isOnline,
+      },
+      storage: 'Redis'
     });
 
   } catch (error) {
@@ -118,33 +187,68 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 친구 관계 추가
+// 친구 관계 추가 (전화번호 기반)
 export async function POST(request: NextRequest) {
   try {
     const {
-      userId,
-      friendId,
-      friendName,
+      userPhone,
       friendPhone,
-      friendAddress
+      nickname
     } = await request.json();
 
-    console.log('👥 친구 추가 요청:', { userId, friendName });
+    console.log('👥 친구 추가 요청:', { userPhone, friendPhone, nickname });
 
     // 입력 검증
-    if (!userId || !friendId || !friendName || !friendPhone || !friendAddress) {
+    if (!userPhone || !friendPhone) {
       return NextResponse.json(
-        { error: '모든 필드가 필요합니다.' },
+        { error: '사용자 전화번호와 친구 전화번호가 필요합니다.' },
         { status: 400 }
       );
     }
 
+    // 전화번호 형식 검증
+    const cleanUserPhone = userPhone.replace(/[-\s]/g, '');
+    const cleanFriendPhone = friendPhone.replace(/[-\s]/g, '');
+
+    if (!/^01[0-9]{8,9}$/.test(cleanUserPhone) || !/^01[0-9]{8,9}$/.test(cleanFriendPhone)) {
+      return NextResponse.json(
+        { error: '올바른 전화번호 형식이 아닙니다. (010-XXXX-XXXX)' },
+        { status: 400 }
+      );
+    }
+
+    // 자기 자신을 친구로 추가하는 것 방지
+    if (cleanUserPhone === cleanFriendPhone) {
+      return NextResponse.json(
+        { error: '자기 자신을 친구로 추가할 수 없습니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 존재 확인
+    const userProfile = await getUserProfile(cleanUserPhone);
+    if (!userProfile) {
+      return NextResponse.json(
+        { error: '사용자를 찾을 수 없습니다. 먼저 회원가입을 해주세요.' },
+        { status: 404 }
+      );
+    }
+
+    // 친구 사용자 존재 확인
+    const friendProfile = await getUserProfile(cleanFriendPhone);
+    if (!friendProfile) {
+      return NextResponse.json(
+        { error: '해당 전화번호로 등록된 사용자를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
     // 사용자의 기존 친구 목록 가져오기 (KV)
-    const userFriends = await getFriendRelationships(userId);
+    const userFriends = await getFriendRelationships(cleanUserPhone);
 
     // 이미 친구인지 확인
     const existingFriend = userFriends.find(friend =>
-      friend.friendId === friendId || friend.friendPhone === friendPhone
+      friend.friendPhone === cleanFriendPhone
     );
 
     if (existingFriend) {
@@ -156,71 +260,46 @@ export async function POST(request: NextRequest) {
 
     // 새 친구 관계 생성
     const newFriendship: FriendRelationship = {
-      userId,
-      friendId,
-      friendName,
-      friendPhone,
-      friendAddress,
-      isOnline: true, // 기본값
-      lastSeen: new Date(),
+      userId: cleanUserPhone,
+      friendId: cleanFriendPhone,
+      friendName: friendProfile.userName,
+      friendPhone: cleanFriendPhone,
+      friendAddress: friendProfile.walletAddress,
+      isOnline: friendProfile.isOnline,
+      lastSeen: new Date(friendProfile.lastSeen),
       createdAt: new Date().toISOString()
     };
 
     // 1. 현재 사용자를 친구 목록에 추가
     userFriends.push(newFriendship);
-    await saveFriendRelationships(userId, userFriends);
+    await saveFriendRelationships(cleanUserPhone, userFriends);
 
     // 2. 상대방에게도 나를 친구로 추가 (양방향 관계 생성)
     console.log('\n=== 양방향 친구 관계 생성 시작 ===');
     try {
-      // 현재 사용자의 실제 정보를 전화번호 매핑에서 가져오기
-      let currentUserPhone = '000-0000-0000'; // 기본값
-      let currentUserName = 'Friend'; // 기본값
-
-      // 현재 사용자의 지갑 주소로 전화번호 매핑 조회
-      try {
-        // getAllMappings 함수를 사용해서 메모리 fallback까지 활용
-        const allMappings = await getAllMappings();
-
-        for (const [phoneNumber, mapping] of allMappings) {
-          if (mapping.walletAddress === userId) {
-            currentUserPhone = mapping.phoneNumber;
-            currentUserName = mapping.userName;
-            console.log(`✅ 현재 사용자 정보 조회 성공: ${currentUserName} (${currentUserPhone})`);
-            break;
-          }
-        }
-
-        if (currentUserName === 'Friend') {
-          console.warn(`⚠️ 현재 사용자 정보를 찾을 수 없음: ${userId}`);
-        }
-      } catch (mappingError) {
-        console.warn('전화번호 매핑 조회 실패, 기본값 사용:', mappingError);
-      }
-
       // 상대방의 친구 목록에 현재 사용자를 추가
-      const friendFriends = await getFriendRelationships(friendAddress);
+      const friendFriends = await getFriendRelationships(cleanFriendPhone);
 
       // 상대방 친구 목록에서 나를 이미 친구로 가지고 있는지 확인
       const existingReverseFriend = friendFriends.find(friend =>
-        friend.friendId === userId || friend.friendPhone === currentUserPhone
+        friend.friendPhone === cleanUserPhone
       );
 
       if (!existingReverseFriend) {
         const reverseFriendship: FriendRelationship = {
-          userId: friendAddress, // 상대방이 주인
-          friendId: userId, // 나를 친구로
-          friendName: currentUserName, // 상대방이 나를 부를 이름
-          friendPhone: currentUserPhone,
-          friendAddress: userId,
-          isOnline: true,
-          lastSeen: new Date(),
+          userId: cleanFriendPhone, // 상대방이 주인
+          friendId: cleanUserPhone, // 나를 친구로
+          friendName: userProfile.userName, // 상대방이 나를 부를 이름
+          friendPhone: cleanUserPhone,
+          friendAddress: userProfile.walletAddress,
+          isOnline: userProfile.isOnline,
+          lastSeen: new Date(userProfile.lastSeen),
           createdAt: new Date().toISOString()
         };
 
         friendFriends.push(reverseFriendship);
-        await saveFriendRelationships(friendAddress, friendFriends);
-        console.log(`✅ 양방향 친구 관계 생성 완료: ${currentUserName} → ${friendName}`);
+        await saveFriendRelationships(cleanFriendPhone, friendFriends);
+        console.log(`✅ 양방향 친구 관계 생성 완료: ${userProfile.userName} → ${friendProfile.userName}`);
       } else {
         console.log('이미 양방향 친구 관계가 존재합니다.');
       }
@@ -231,8 +310,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '친구가 성공적으로 추가되었습니다.',
-      friend: newFriendship,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      friend: {
+        phoneNumber: newFriendship.friendPhone,
+        userName: newFriendship.friendName,
+        walletAddress: newFriendship.friendAddress,
+        isOnline: newFriendship.isOnline,
+        lastSeen: newFriendship.lastSeen,
+        nickname: nickname || newFriendship.friendName,
+      },
+      storage: 'Redis'
     });
 
   } catch (error) {

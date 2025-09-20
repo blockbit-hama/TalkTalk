@@ -26,10 +26,8 @@ export const useWalletList = () => {
   // 지갑 목록 로드
   const loadWallets = () => {
     try {
-      console.error('DEBUG: loadWallets 시작됨');
       setIsLoading(true);
       const wallets = getWalletsFromStorage();
-      console.error('DEBUG: 지갑 개수:', wallets.length);
       console.log('🔍 지갑 목록 로드:', wallets.length, '개');
       setWalletList(wallets);
 
@@ -52,9 +50,7 @@ export const useWalletList = () => {
     } catch (error) {
       console.error('지갑 목록 로드 실패:', error);
     } finally {
-      console.error('DEBUG: loadWallets finally 블록 실행됨');
       setIsLoading(false);
-      console.error('DEBUG: isLoading false로 설정됨');
     }
   };
 

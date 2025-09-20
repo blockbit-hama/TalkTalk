@@ -31,8 +31,56 @@ export const WALLET_CONSTANTS = {
 
 // 가상자산 상수
 export const ASSET_CONSTANTS = {
-  DEFAULT_ENABLED_ASSETS: ['XRP', 'USD', 'CNY', 'EUR'], // KRW 제거 - 실제 지갑에 없음
-  STORAGE_KEY: 'enabledAssets'
+  DEFAULT_ENABLED_ASSETS: ['XRP', 'USD', 'CNY', 'EUR'],
+  STORAGE_KEY: 'enabledAssets',
+  
+  // 자산 정보 (로컬 메모리용)
+  ASSET_INFO: {
+    XRP: {
+      symbol: 'XRP',
+      name: 'XRP',
+      icon: 'X',
+      color: '#F2A003',
+      decimals: 6,
+      type: 'native'
+    },
+    USD: {
+      symbol: 'USD',
+      name: 'US Dollar',
+      icon: '$',
+      color: '#26A17B',
+      decimals: 2,
+      type: 'token',
+      issuer: 'rJgqyVQrzRQTQREVTYK21843LR7vb7LapX'
+    },
+    CNY: {
+      symbol: 'CNY',
+      name: 'Chinese Yuan',
+      icon: '¥',
+      color: '#FF6B6B',
+      decimals: 2,
+      type: 'token',
+      issuer: 'rKNeAZt7zMLinPBBuopNk6uejPeARgEt5x'
+    },
+    EUR: {
+      symbol: 'EUR',
+      name: 'Euro',
+      icon: '€',
+      color: '#4ECDC4',
+      decimals: 2,
+      type: 'token',
+      issuer: 'rBXYWgAg6z5NxCshzGkNuX3YjHFyN26cgj'
+    },
+    TST: {
+      symbol: 'TST',
+      name: 'Test Token',
+      icon: 'T',
+      color: '#9B59B6',
+      decimals: 2,
+      type: 'token',
+      issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd'
+    }
+  }
 } as const;
 
 // UI 상수

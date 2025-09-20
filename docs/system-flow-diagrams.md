@@ -443,6 +443,268 @@ sequenceDiagram
 
 ---
 
+## 📦 **일괄 전송 흐름**
+
+### Batch Payment 전체 흐름
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant UI as Frontend UI
+    participant BP as Batch Payment Page
+    participant WA as Wallet Atoms
+    participant XB as XRPL Batch
+    participant XC as XRPL Client
+    participant XN as XRPL Network
+
+    U->>UI: 전송 방식 → "일괄 전송" 선택
+    UI->>BP: /batch-payment 페이지로 이동
+
+    BP->>WA: selectedWallet 조회
+    WA-->>BP: 선택된 지갑 정보 반환
+
+    U->>BP: 수신자 정보 입력
+    Note over BP: 수신자 1: 김철수 (10 XRP)<br/>수신자 2: 이영희 (15 XRP)<br/>수신자 3: 박민수 (20 XRP)
+
+    U->>BP: "+ 수신자 추가" 클릭
+    BP->>BP: 새 수신자 폼 추가
+
+    U->>BP: "일괄 전송" 버튼 클릭
+
+    BP->>BP: 입력값 검증
+    Note over BP: - 주소 형식 확인 (r로 시작)<br/>- 금액 유효성 확인<br/>- 최소 1명 이상
+
+    alt 검증 실패
+        BP->>BP: 오류 메시지 표시
+    else 검증 성공
+        BP->>XB: setWallet() 호출
+        XB->>XB: 지갑 설정 완료
+
+        BP->>XB: executeBatchPayments() 호출
+        XB->>XB: BatchPaymentItem 배열 생성
+
+        loop 각 수신자에 대해
+            XB->>XC: Payment 트랜잭션 생성
+            XC->>XN: 트랜잭션 제출
+            XN-->>XC: 트랜잭션 결과 반환
+            XC-->>XB: 개별 결과 저장
+
+            Note over XB: 1초 간격으로 순차 전송<br/>(네트워크 부하 방지)
+        end
+
+        XB-->>BP: 일괄 전송 결과 반환
+
+        BP->>BP: 결과 화면 표시
+        Note over BP: 성공: 3건<br/>실패: 0건<br/>각 트랜잭션 해시 표시
+
+        BP->>BP: transferCompleted 이벤트 발생
+        Note over BP: 잔액 자동 새로고침 트리거
+    end
+
+    Note over U,XN: 일괄 전송 완료
+```
+
+### 일괄 전송 결과 처리 흐름
+
+```mermaid
+sequenceDiagram
+    participant BP as Batch Payment Page
+    participant XB as XRPL Batch
+    participant RS as Result Screen
+    participant UI as Frontend UI
+
+    XB->>BP: 일괄 전송 결과 반환
+
+    BP->>RS: 결과 화면으로 전환
+
+    RS->>RS: 전체 결과 요약 표시
+    Note over RS: 총 3건 중<br/>성공 3건 / 실패 0건
+
+    loop 각 전송 결과에 대해
+        RS->>RS: 개별 결과 카드 표시
+
+        alt 성공한 경우
+            RS->>RS: 녹색 테두리 + ✅ 아이콘
+            RS->>RS: 트랜잭션 해시 표시
+        else 실패한 경우
+            RS->>RS: 빨간색 테두리 + ❌ 아이콘
+            RS->>RS: 오류 메시지 표시
+        end
+    end
+
+    U->>RS: "완료" 버튼 클릭
+
+    RS->>RS: 실패한 수신자만 필터링
+
+    alt 실패한 수신자가 있는 경우
+        RS->>BP: 실패한 수신자로 폼 재설정
+        Note over BP: 실패한 항목만 다시 시도 가능
+    else 모두 성공한 경우
+        RS->>BP: 빈 폼으로 초기화
+        BP->>UI: 메인 화면으로 이동
+    end
+
+    Note over BP,UI: 일괄 전송 결과 처리 완료
+```
+
+---
+
+## ⏰ **조건부 송금 흐름**
+
+### Escrow Payment 전체 흐름
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant UI as Frontend UI
+    participant EP as Escrow Payment Page
+    participant WA as Wallet Atoms
+    participant XB as XRPL Batch
+    participant XC as XRPL Client
+    participant XN as XRPL Network
+
+    U->>UI: 전송 방식 → "조건부 송금" 선택
+    UI->>EP: /escrow-payment 페이지로 이동
+
+    EP->>WA: selectedWallet 조회
+    WA-->>EP: 선택된 지갑 정보 반환
+
+    U->>EP: 에스크로 정보 입력
+    Note over EP: 수신자: 김철수<br/>금액: 100 XRP<br/>완료 가능: 24시간 후<br/>취소 가능: 72시간 후
+
+    U->>EP: "에스크로 생성하기" 클릭
+
+    EP->>EP: 입력값 검증
+    EP->>EP: Ripple 타임스탬프 계산
+    Note over EP: finishAfter = 현재시간 + 24시간<br/>cancelAfter = 현재시간 + 72시간
+
+    alt 검증 실패
+        EP->>EP: 오류 메시지 표시
+    else 검증 성공
+        EP->>XB: setWallet() 호출
+        XB->>XB: 지갑 설정 완료
+
+        EP->>XB: createEscrow() 호출
+        XB->>XC: EscrowCreate 트랜잭션 생성
+        XC->>XN: 트랜잭션 제출
+        XN-->>XC: 에스크로 생성 결과 반환
+        XC-->>XB: 에스크로 ID 및 결과 반환
+        XB-->>EP: 에스크로 생성 결과 반환
+
+        alt 에스크로 생성 성공
+            EP->>EP: 에스크로 관리 화면으로 전환
+            EP->>EP: transferCompleted 이벤트 발생
+        else 에스크로 생성 실패
+            EP->>EP: 실패 메시지 표시
+        end
+    end
+
+    Note over U,XN: 에스크로 생성 완료
+```
+
+### 에스크로 관리 흐름
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant EP as Escrow Payment Page
+    participant EM as Escrow Management
+    participant XB as XRPL Batch
+    participant XC as XRPL Client
+    participant XN as XRPL Network
+
+    EP->>EM: 에스크로 관리 화면 표시
+
+    EM->>EM: 에스크로 정보 표시
+    Note over EM: 에스크로 ID: #abc123<br/>수신자: 김철수<br/>금액: 100 XRP<br/>상태: 대기 중 ⏳<br/>완료 가능: 2025-01-22 15:30<br/>취소 가능: 2025-01-24 15:30
+
+    alt 에스크로 완료 시나리오
+        U->>EM: "에스크로 완료" 버튼 클릭
+
+        EM->>EM: 현재 시간 vs finishAfter 확인
+
+        alt 완료 가능 시간 이전
+            EM->>EM: "아직 완료할 수 없습니다" 메시지
+        else 완료 가능 시간 이후
+            EM->>XB: finishEscrow() 호출
+            XB->>XC: EscrowFinish 트랜잭션 생성
+            XC->>XN: 트랜잭션 제출
+            XN-->>XC: 에스크로 완료 결과 반환
+            XC-->>XB: 완료 결과 반환
+            XB-->>EM: 완료 결과 반환
+
+            EM->>EM: "에스크로 완료" 메시지 표시
+            EM->>EM: transferCompleted 이벤트 발생
+        end
+
+    else 에스크로 취소 시나리오
+        U->>EM: "에스크로 취소" 버튼 클릭
+
+        EM->>EM: 현재 시간 vs cancelAfter 확인
+
+        alt 취소 가능 시간 이전
+            EM->>EM: "아직 취소할 수 없습니다" 메시지
+        else 취소 가능 시간 이후
+            EM->>XB: cancelEscrow() 호출
+            XB->>XC: EscrowCancel 트랜잭션 생성
+            XC->>XN: 트랜잭션 제출
+            XN-->>XC: 에스크로 취소 결과 반환
+            XC-->>XB: 취소 결과 반환
+            XB-->>EM: 취소 결과 반환
+
+            EM->>EM: "에스크로 취소 완료" 메시지 표시
+            EM->>EM: transferCompleted 이벤트 발생
+        end
+    end
+
+    Note over U,XN: 에스크로 관리 완료
+```
+
+### 에스크로 사용 시나리오 흐름
+
+```mermaid
+sequenceDiagram
+    participant S as 판매자 (송금인)
+    participant B as 구매자 (수신자)
+    participant ES as Escrow System
+    participant XN as XRPL Network
+
+    Note over S,XN: 시나리오: 계약금 지불
+
+    S->>ES: 에스크로 생성
+    Note over ES: 금액: 1000 XRP<br/>완료 조건: 24시간 후<br/>취소 조건: 72시간 후
+
+    ES->>XN: EscrowCreate 트랜잭션
+    XN-->>ES: 에스크로 ID 생성
+
+    ES->>B: 에스크로 생성 알림
+    Note over B: "1000 XRP 계약금이<br/>에스크로로 설정되었습니다"
+
+    Note over S,B: 24시간 대기...
+
+    alt 정상 거래 완료 시나리오
+        B->>ES: 서비스/상품 제공 완료
+        S->>ES: "에스크로 완료" 실행
+        ES->>XN: EscrowFinish 트랜잭션
+        XN->>B: 1000 XRP 자동 이체
+
+        Note over S,B: 거래 완료 ✅
+
+    else 거래 취소 시나리오
+        Note over S,B: 72시간 후...
+
+        S->>ES: "에스크로 취소" 실행
+        ES->>XN: EscrowCancel 트랜잭션
+        XN->>S: 1000 XRP 반환
+
+        Note over S,B: 거래 취소 ❌
+    end
+
+    Note over S,XN: 에스크로 거래 시나리오 완료
+```
+
+---
+
 ## 💬 **채팅 흐름**
 
 ### 서버 기반 채팅방 입장 흐름 (v1.0.2)

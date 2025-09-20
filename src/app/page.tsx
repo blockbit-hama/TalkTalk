@@ -10,7 +10,7 @@ import { useWalletBalance } from "../hooks/queries/useWalletBalance";
 import { Button, Input, Card } from "../components/ui";
 import { Modal } from "../components/ui/Modal";
 import { useQueryClient } from '@tanstack/react-query';
-import { regenerateAllWalletPrivateKeys, createTestWalletIfNotExists, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
+import { regenerateAllWalletPrivateKeys, getNextEthAddressPath, getNextAccountPath } from "../lib/wallet-utils";
 import { xrplFaucet } from "../lib/xrpl/xrpl-faucet";
 import { xrplClient } from "../lib/xrpl/xrpl-client";
 import dynamic from 'next/dynamic';
@@ -311,6 +311,7 @@ export default function Home() {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [displayUserName, setDisplayUserName] = useState<string>('');
+  const [transferModalOpen, setTransferModalOpen] = useState<boolean>(false);
   const balanceOptions = ['잔액', 'NFT'] as const;
   
   // useMasterAddress 훅 사용
@@ -324,9 +325,11 @@ export default function Home() {
     wallet: selectedWallet,
     isLoading: isWalletLoading,
     enabledAssets,
+    isRegistered,
     loadWallet,
     refreshWallet,
-    updateEnabledAssets
+    updateEnabledAssets,
+    registerUser
   } = useWallet();
 
 
@@ -533,9 +536,9 @@ export default function Home() {
         return;
       }
 
-      // Devnet Faucet 요청
-      console.log('XRPL Devnet Faucet API 호출 중...');
-      const result = await xrplFaucet.requestDevnetXRP(selectedWallet.addresses.XRP);
+      // Testnet Faucet 요청 (현재 네트워크가 testnet이므로)
+      console.log('XRPL Testnet Faucet API 호출 중...');
+      const result = await xrplFaucet.requestTestnetXRP(selectedWallet.addresses.XRP);
       console.log('Faucet API 응답:', result);
 
       if (result.success) {
@@ -568,8 +571,8 @@ export default function Home() {
     }
   };
 
-  // 전화번호 등록 함수
-  const handlePhoneRegistration = async () => {
+  // 사용자 등록 함수 (Redis 저장 + 로컬스토리지 삭제)
+  const handleUserRegistration = async () => {
     if (!phoneNumber.trim()) {
       alert('전화번호를 입력해주세요.');
       return;
@@ -580,52 +583,32 @@ export default function Home() {
       return;
     }
 
-    if (!selectedWallet?.addresses.XRP) {
-      alert('지갑 주소를 찾을 수 없습니다.');
-      return;
-    }
-
     try {
-      console.log('📞 전화번호 등록 시작:', phoneNumber, userName, '→', selectedWallet.addresses.XRP);
+      console.log('📞 사용자 등록 시작:', phoneNumber, userName);
 
-      const response = await fetch('/api/phone-mapping', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneNumber.trim(),
-          walletAddress: selectedWallet.addresses.XRP,
-          userName: userName.trim(),
-        }),
-      });
+      // useWallet 훅의 registerUser 함수 사용
+      const success = await registerUser(phoneNumber.trim(), userName.trim());
 
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(`${userName}님의 전화번호 ${phoneNumber}가 지갑 주소와 연동되었습니다!`);
+      if (success) {
+        alert(`${userName}님의 계정이 등록되었습니다!\n개인키는 Redis에 안전하게 저장되었습니다.`);
         setPhoneModalOpen(false);
         setPhoneNumber('');
         setUserName('');
 
-        // 로컬스토리지에도 저장 (UI 표시용)
-        localStorage.setItem('userPhoneNumber', phoneNumber.trim());
-        localStorage.setItem('userName', userName.trim());
-
         // 화면에 표시되는 사용자 이름 업데이트
         setDisplayUserName(userName.trim());
       } else {
-        alert(result.error || '전화번호 등록에 실패했습니다.');
+        alert('사용자 등록에 실패했습니다.');
       }
     } catch (error) {
-      console.error('전화번호 등록 오류:', error);
-      alert('전화번호 등록 중 오류가 발생했습니다.');
+      console.error('사용자 등록 오류:', error);
+      alert('사용자 등록 중 오류가 발생했습니다.');
     }
   };
 
-  // 사용자 이름 로드 useEffect
+  // 사용자 이름 로드 useEffect (sessionStorage 사용)
   useEffect(() => {
-    const savedUserName = localStorage.getItem('userName');
+    const savedUserName = sessionStorage.getItem('userName');
     if (savedUserName) {
       setDisplayUserName(savedUserName);
     }
@@ -714,6 +697,18 @@ export default function Home() {
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
+  // 전화번호 등록 모달 열기 이벤트 리스너
+  useEffect(() => {
+    const handleOpenPhoneModal = () => {
+      setPhoneModalOpen(true);
+    };
+
+    window.addEventListener('openPhoneModal', handleOpenPhoneModal);
+    return () => {
+      window.removeEventListener('openPhoneModal', handleOpenPhoneModal);
+    };
+  }, []);
+
 
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -789,17 +784,17 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* 새 지갑 생성 */}
+                  {/* 사용자 등록 안내 */}
                   <div
                     className="dropdown-option"
                     onClick={() => {
                       setWalletSelectOpen(false);
-                      router.push('/create-wallet');
+                      setPhoneModalOpen(true);
                     }}
                     style={{ borderTop: '1px solid #333', marginTop: '4px' }}
                   >
-                    <span style={{ fontSize: '18px', marginRight: '8px' }}>+</span>
-                    새 지갑 생성
+                    <span style={{ fontSize: '18px', marginRight: '8px' }}>📱</span>
+                    계정 등록
                   </div>
                 </div>
               )}
@@ -851,7 +846,7 @@ export default function Home() {
         <div className="main-action-button-group">
           <button
             className="main-action-button"
-            onClick={() => router.push('/transfer')}
+            onClick={() => setTransferModalOpen(true)}
           >
             전송
           </button>
@@ -918,6 +913,71 @@ export default function Home() {
         </div>
       </main>
 
+      {/* 전송 방식 선택 모달 */}
+      <Modal
+        isOpen={transferModalOpen}
+        onClose={() => setTransferModalOpen(false)}
+        title="전송 방식 선택"
+        type="info"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300 text-center mb-6">
+            어떤 방식으로 전송하시겠습니까?
+          </p>
+
+          {/* 일반 전송 */}
+          <button
+            onClick={() => {
+              setTransferModalOpen(false);
+              router.push('/transfer');
+            }}
+            className="w-full p-4 bg-[#2A2A2A] hover:bg-[#3A3A3A] border border-gray-600 rounded-lg transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-2xl">💸</div>
+              <div>
+                <div className="font-bold text-white">일반 전송</div>
+                <div className="text-sm text-gray-400">한 명에게 즉시 송금</div>
+              </div>
+            </div>
+          </button>
+
+          {/* 일괄 전송 */}
+          <button
+            onClick={() => {
+              setTransferModalOpen(false);
+              router.push('/batch-payment');
+            }}
+            className="w-full p-4 bg-[#2A2A2A] hover:bg-[#3A3A3A] border border-gray-600 rounded-lg transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-2xl">📦</div>
+              <div>
+                <div className="font-bold text-white">일괄 전송</div>
+                <div className="text-sm text-gray-400">여러 명에게 한 번에 송금</div>
+              </div>
+            </div>
+          </button>
+
+          {/* 조건부 전송 */}
+          <button
+            onClick={() => {
+              setTransferModalOpen(false);
+              router.push('/escrow-payment');
+            }}
+            className="w-full p-4 bg-[#2A2A2A] hover:bg-[#3A3A3A] border border-gray-600 rounded-lg transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-2xl">🔒</div>
+              <div>
+                <div className="font-bold text-white">조건부 전송</div>
+                <div className="text-sm text-gray-400">조건 충족 시 자동 송금</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </Modal>
+
       {/* 전화번호 등록 모달 */}
       <Modal
         isOpen={phoneModalOpen}
@@ -926,12 +986,15 @@ export default function Home() {
           setPhoneNumber('');
           setUserName('');
         }}
-        title="계정 정보 등록"
+        title={isRegistered ? "계정 정보 수정" : "계정 등록"}
         type="info"
       >
         <div className="space-y-4">
           <p className="text-gray-300">
-            친구들이 당신을 찾을 수 있도록 이름과 전화번호를 등록해주세요.
+            {isRegistered 
+              ? "계정 정보를 수정할 수 있습니다."
+              : "지갑을 사용하려면 먼저 계정을 등록해주세요. 등록 시 자동으로 새 지갑이 생성됩니다."
+            }
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -974,11 +1037,11 @@ export default function Home() {
               취소
             </button>
             <button
-              onClick={handlePhoneRegistration}
+              onClick={handleUserRegistration}
               disabled={!phoneNumber.trim() || !userName.trim()}
               className="flex-1 px-4 py-2 bg-[#F2A003] hover:bg-[#E09400] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
-              등록
+              {isRegistered ? "수정" : "등록"}
             </button>
           </div>
         </div>
