@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWalletList } from "../../hooks/useWalletAtoms";
 import { useEnabledAssets } from "../../hooks/useWalletAtoms";
-import { xrplBatch, EscrowPayment } from "../../lib/xrpl/xrpl-batch";
+import { xrplEscrowV2, EscrowPayment } from "../../lib/xrpl/xrpl-escrow-v2";
 import { Button, Input, Card } from "../../components/ui";
 
 interface EscrowFormData {
@@ -49,16 +49,16 @@ export default function EscrowPaymentPage() {
     const cancelAfter = new Date(now.getTime() + (parseFloat(formData.cancelAfterHours) * 60 * 60 * 1000));
 
     return {
-      finishAfter: xrplBatch.getRippleTimestamp(finishAfter),
-      cancelAfter: xrplBatch.getRippleTimestamp(cancelAfter),
+      finishAfter: xrplEscrowV2.getRippleTimestamp(finishAfter),
+      cancelAfter: xrplEscrowV2.getRippleTimestamp(cancelAfter),
       finishAfterDate: finishAfter,
       cancelAfterDate: cancelAfter
     };
   };
 
-  // Escrow 생성 실행
+  // 표준 방식 Escrow 생성 실행
   const createEscrow = async () => {
-    if (!selectedWallet?.privateKeys.XRP) {
+    if (!selectedWallet) {
       alert('지갑 정보를 찾을 수 없습니다.');
       return;
     }
@@ -81,15 +81,31 @@ export default function EscrowPaymentPage() {
 
     setIsLoading(true);
     try {
-      console.log('🔒 Escrow 생성 시작');
+      console.log('🔒 표준 방식 Escrow 생성 시작');
 
-      // 지갑 설정
-      await xrplBatch.setWallet(selectedWallet.privateKeys.XRP);
+      // 현재 사용자의 전화번호 가져오기
+      const userPhoneNumber = sessionStorage.getItem('userPhoneNumber');
+      if (!userPhoneNumber) {
+        alert('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      // Redis에서 개인키 가져오기
+      const response = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(userPhoneNumber)}`);
+      const userResult = await response.json();
+      
+      if (!response.ok || !userResult.success || !userResult.user?.privateKey) {
+        alert('개인키를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      // 표준 방식으로 지갑 설정
+      await xrplEscrowV2.setWallet(userResult.user.privateKey);
 
       // 시간 계산
       const times = calculateTimes();
 
-      // EscrowPayment 생성
+      // 표준 방식 EscrowPayment 생성
       const escrowPayment: EscrowPayment = {
         destination: formData.recipientAddress,
         amount: formData.amount,
@@ -99,12 +115,12 @@ export default function EscrowPaymentPage() {
         memo: formData.memo || `Escrow payment to ${formData.recipientName || 'recipient'}`
       };
 
-      console.log('Escrow 생성 파라미터:', escrowPayment);
+      console.log('표준 방식 Escrow 생성 파라미터:', escrowPayment);
 
-      // Escrow 생성 실행
-      const result = await xrplBatch.createEscrow(escrowPayment);
+      // 표준 방식 Escrow 생성 실행
+      const result = await xrplEscrowV2.createEscrow(escrowPayment);
 
-      console.log('Escrow 생성 결과:', result);
+      console.log('표준 방식 Escrow 생성 결과:', result);
       setEscrowResult({
         ...result,
         formData,

@@ -2,6 +2,46 @@ import { Client, Wallet, Payment, TrustSet, EscrowCreate, EscrowFinish, EscrowCa
 import { xrplClient } from './xrpl-client';
 import { MOCK_TOKENS } from './xrpl-amm';
 
+// XRPL 시드 구문 검증 함수
+function isValidXRPLSeed(seed: string): boolean {
+  const allowedChars = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz';
+  return seed.split('').every(char => allowedChars.includes(char));
+}
+
+// 견고한 XRPL 지갑 생성 함수 (권장 방식)
+function createWalletFromKeyData(privateKey?: string, seed?: string): Wallet {
+  console.log('🔑 일괄전송용 지갑 생성 시도:', {
+    hasPrivateKey: !!privateKey,
+    hasSeed: !!seed,
+    privateKeyLength: privateKey?.length,
+    seedLength: seed?.length,
+    privateKeyPrefix: privateKey?.substring(0, 10) + '...',
+    seedPrefix: seed?.substring(0, 10) + '...'
+  });
+
+  try {
+    // 1순위: 개인키 직접 사용 (가장 안전)
+    if (privateKey) {
+      console.log('📍 1순위: privateKey로 지갑 생성 시도');
+      return Wallet.fromPrivateKey(privateKey);
+    }
+  } catch (error) {
+    console.warn('⚠️ privateKey로 지갑 생성 실패:', error);
+  }
+
+  try {
+    // 2순위: 시드 구문 사용 (올바른 형식인 경우만)
+    if (seed && isValidXRPLSeed(seed)) {
+      console.log('📍 2순위: seed로 지갑 생성 시도');
+      return Wallet.fromSeed(seed);
+    }
+  } catch (error) {
+    console.warn('⚠️ seed로 지갑 생성 실패:', error);
+  }
+
+  throw new Error('일괄전송용 지갑 생성 실패: 개인키와 시드 모두 유효하지 않음');
+}
+
 export interface BatchPaymentItem {
   to: string;
   amount: string;
@@ -49,24 +89,26 @@ export class XRPLBatchManager {
     this.client = xrplClient.getClient();
   }
 
-  async setWallet(privateKey: string): Promise<boolean> {
+  async setWallet(privateKey: string, seed?: string): Promise<boolean> {
     try {
-      console.log('🔑 지갑 설정 시도:', {
+      console.log('🔑 일괄전송용 지갑 설정 시도:', {
         privateKeyPrefix: privateKey?.substring(0, 10) + '...',
-        privateKeyLength: privateKey?.length
+        privateKeyLength: privateKey?.length,
+        hasSeed: !!seed
       });
 
-      // privateKey로부터 지갑 생성 (useWallet.ts와 동일한 방식)
-      this.wallet = Wallet.fromSecret(privateKey);
+      // 견고한 지갑 생성 함수 사용 (privateKey 1순위, seed 2순위)
+      this.wallet = createWalletFromKeyData(privateKey, seed);
+      console.log('✅ 견고한 지갑 생성 성공');
 
-      console.log('✅ 지갑 설정 성공:', {
+      console.log('✅ 일괄전송용 지갑 설정 완료:', {
         address: this.wallet.address,
         publicKey: this.wallet.publicKey
       });
 
       return true;
     } catch (error) {
-      console.error('❌ 지갑 설정 실패:', error);
+      console.error('❌ 일괄전송용 지갑 설정 실패:', error);
       console.error('privateKey 정보:', {
         prefix: privateKey?.substring(0, 10) + '...',
         length: privateKey?.length,

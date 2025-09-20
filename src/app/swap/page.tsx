@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Card, AlertModal, useModal } from "../../components/ui";
 import { TabBar } from "../../components/molecules/TabBar";
 import { useWallet } from "../../hooks/useWallet";
-import { xrplAMM, MOCK_TOKENS } from "../../lib/xrpl/xrpl-amm";
+import { xrplAMMV2, MOCK_TOKENS, SwapRequest, SwapResult } from "../../lib/xrpl/xrpl-amm-v2";
 import { Wallet } from 'xrpl';
 
 export default function SwapPage() {
@@ -33,7 +33,7 @@ export default function SwapPage() {
   }, []);
 
   const loadAvailablePairs = async () => {
-    const pairs = await xrplAMM.getAvailableSwapPairs();
+    const pairs = await xrplAMMV2.getAvailableSwapPairs();
     setAvailablePairs(pairs);
   };
 
@@ -49,55 +49,31 @@ export default function SwapPage() {
 
   const calculateSwapQuote = async () => {
     try {
-      // 실제 XRPL AMM 풀 정보를 가져와서 견적 계산
-      const fromAsset = {
-        currency: fromCurrency === 'XRP' ? 'XRP' : fromCurrency,
-        issuer: fromCurrency === 'XRP' ? undefined : MOCK_TOKENS.find(t => t.symbol === fromCurrency)?.issuer
+      console.log('💰 표준 방식 스왑 견적 계산 시작');
+
+      // 표준 방식 스왑 요청 생성
+      const swapRequest: SwapRequest = {
+        fromCurrency,
+        toCurrency,
+        fromAmount,
+        slippage: parseFloat(slippage)
       };
 
-      const toAsset = {
-        currency: toCurrency === 'XRP' ? 'XRP' : toCurrency,
-        issuer: toCurrency === 'XRP' ? undefined : MOCK_TOKENS.find(t => t.symbol === toCurrency)?.issuer
-      };
+      // 표준 방식으로 견적 계산
+      const quote = await xrplAMMV2.calculateSwapQuote(swapRequest);
 
-      // 실제 AMM 풀 정보 가져오기
-      const ammInfo = await xrplAMM.getAMMInfo(fromAsset, toAsset);
-
-      if (ammInfo) {
-        const inputAmount = parseFloat(fromAmount);
-
-        // AMM 풀 잔액으로부터 환율 계산
-        const amount1 = typeof ammInfo.amount === 'string' ?
-          parseFloat(ammInfo.amount) / 1000000 : // XRP drops를 XRP로 변환
-          parseFloat(ammInfo.amount.value);
-
-        const amount2 = typeof ammInfo.amount2 === 'string' ?
-          parseFloat(ammInfo.amount2) / 1000000 : // XRP drops를 XRP로 변환
-          parseFloat(ammInfo.amount2.value);
-
-        // 간단한 상수곱 공식 (x * y = k)
-        const outputAmount = (inputAmount * amount2) / (amount1 + inputAmount);
-        const fee = outputAmount * 0.003; // 0.3% 거래수수료
-        const finalOutput = outputAmount - fee;
-
-        const quote = xrplAMM.calculateSwapQuote(
-          inputAmount,
-          amount1,
-          amount2,
-          0.003
-        );
-
-        setToAmount(finalOutput.toFixed(6));
+      if (quote) {
+        setToAmount(quote.outputAmount);
         setPriceImpact(quote.priceImpact);
         setSwapQuote(quote);
+        console.log('✅ 표준 방식 스왑 견적 계산 완료:', quote);
       } else {
-        // AMM 풀이 없는 경우 기본값
-        console.warn('AMM 풀 정보를 가져올 수 없습니다');
+        console.warn('⚠️ 스왑 견적 계산 실패');
         setToAmount('0');
         setSwapQuote(null);
       }
     } catch (error) {
-      console.error('스왑 견적 계산 실패:', error);
+      console.error('❌ 표준 방식 스왑 견적 계산 실패:', error);
       setToAmount('0');
       setSwapQuote(null);
     }
@@ -117,76 +93,63 @@ export default function SwapPage() {
       return;
     }
 
-    if (!selectedWallet || !selectedWallet.privateKeys?.XRP) {
-      showAlert('XRP 지갑이 필요합니다.', 'error', '지갑 오류');
+    if (!selectedWallet) {
+      showAlert('지갑을 선택해주세요.', 'warning', '지갑 오류');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      console.log(`실제 XRPL AMM 스왑 시작: ${fromAmount} ${fromCurrency} → ${toCurrency}`);
+      console.log(`🔄 표준 방식 XRPL AMM 스왑 시작: ${fromAmount} ${fromCurrency} → ${toCurrency}`);
 
-      // XRPL 연결
-      const connected = await xrplAMM.connect();
-      if (!connected) {
-        throw new Error('XRPL 네트워크 연결 실패');
+      // 현재 사용자의 전화번호 가져오기
+      const userPhoneNumber = sessionStorage.getItem('userPhoneNumber');
+      if (!userPhoneNumber) {
+        alert('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
       }
 
-      // 지갑 설정 - mnemonic을 사용해 지갑 생성
-      console.log('지갑 정보:', {
-        name: selectedWallet.name,
-        address: selectedWallet.addresses?.XRP,
-        hasMnemonic: !!selectedWallet.mnemonic
-      });
-
-      // 간단한 지갑 생성 (개인키 사용)
-      const wallet = Wallet.fromSeed(selectedWallet.privateKeys.XRP);
-      xrplAMM.setWallet(wallet);
-
-      // USD 토큰을 받을 때 trustline 설정 확인
-      if (toCurrency === 'USD') {
-        console.log('USD trustline 설정 중...');
-        const usdIssuer = MOCK_TOKENS.find(t => t.symbol === 'USD')?.issuer;
-        if (usdIssuer) {
-          const trustlineHash = await xrplAMM.createTrustLine('USD', usdIssuer, '1000000');
-          if (trustlineHash) {
-            console.log('✅ USD trustline 설정 완료:', trustlineHash);
-          } else {
-            console.log('⚠️ USD trustline 설정 실패 또는 이미 존재');
-          }
-        }
+      // Redis에서 개인키 가져오기
+      const response = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(userPhoneNumber)}`);
+      const userResult = await response.json();
+      
+      if (!response.ok || !userResult.success || !userResult.user?.privateKey) {
+        alert('개인키를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
       }
 
-      // 실제 AMM 스왑 실행
-      const fromAsset = {
-        currency: fromCurrency === 'XRP' ? 'XRP' : fromCurrency,
-        issuer: fromCurrency === 'XRP' ? undefined : MOCK_TOKENS.find(t => t.symbol === fromCurrency)?.issuer,
-        amount: fromCurrency === 'XRP' ? Math.floor(parseFloat(fromAmount) * 1000000).toString() : fromAmount
+      // 표준 방식으로 지갑 설정
+      await xrplAMMV2.setWallet(userResult.user.privateKey);
+
+      // 표준 방식 스왑 요청 생성
+      const swapRequest: SwapRequest = {
+        fromCurrency,
+        toCurrency,
+        fromAmount,
+        minAmount: (parseFloat(toAmount) * (1 - parseFloat(slippage) / 100)).toString(), // 슬리피지 고려
+        slippage: parseFloat(slippage)
       };
 
-      const toAsset = {
-        currency: toCurrency === 'XRP' ? 'XRP' : toCurrency,
-        issuer: toCurrency === 'XRP' ? undefined : MOCK_TOKENS.find(t => t.symbol === toCurrency)?.issuer,
-        minAmount: toCurrency === 'XRP' ? Math.floor(parseFloat(toAmount) * 1000000 * 0.95).toString() : (parseFloat(toAmount) * 0.95).toString() // 5% 슬리피지 허용
-      };
+      console.log('📦 표준 방식 스왑 요청:', swapRequest);
 
-      // 실제 XRPL AMM 스왑 실행
-      const txHash = await xrplAMM.executeSwap(fromAsset, toAsset);
+      // 표준 방식 스왑 실행
+      const result: SwapResult = await xrplAMMV2.executeSwap(swapRequest);
 
-      if (txHash) {
-        const successMessage = `스왑이 성공적으로 완료되었습니다!\n\n${fromAmount} ${fromCurrency} → ${toAmount} ${toCurrency}\n\n트랜잭션 해시:\n${txHash.substring(0, 16)}...\n\nXRPL AMM 프로토콜을 통해 실제 스왑이 실행되었습니다.`;
+      if (result.success) {
+        const successMessage = `표준 방식 스왑이 성공적으로 완료되었습니다!\n\n${result.actualFromAmount} ${fromCurrency} → ${result.actualToAmount} ${toCurrency}\n\n트랜잭션 해시:\n${result.transactionHash?.substring(0, 16)}...\n\nXRPL 표준 예제 기반 AMM 프로토콜을 통해 실제 스왑이 실행되었습니다.`;
 
-        showAlert(successMessage, 'success', '🎉 스왑 완료');
+        showAlert(successMessage, 'success', '🎉 표준 방식 스왑 완료');
 
         // 스왑 이벤트 발생
         window.dispatchEvent(new CustomEvent('swapCompleted', {
           detail: {
             from: fromCurrency,
             to: toCurrency,
-            fromAmount,
-            toAmount: toAmount,
-            hash: txHash
+            fromAmount: result.actualFromAmount,
+            toAmount: result.actualToAmount,
+            hash: result.transactionHash,
+            method: 'standard'
           }
         }));
 
@@ -200,11 +163,11 @@ export default function SwapPage() {
           router.push('/');
         }, 3000);
       } else {
-        throw new Error('스왑 트랜잭션 실패');
+        throw new Error(result.error || '스왑 트랜잭션 실패');
       }
 
     } catch (error) {
-      console.error('XRPL AMM 스왑 실패:', error);
+      console.error('❌ 표준 방식 XRPL AMM 스왑 실패:', error);
 
       let errorMessage = '알 수 없는 오류';
       if (error instanceof Error) {
@@ -219,7 +182,7 @@ export default function SwapPage() {
         }
       }
 
-      showAlert(`스왑 처리 중 오류가 발생했습니다:\n\n${errorMessage}`, 'error', '스왑 실패');
+      showAlert(`표준 방식 스왑 처리 중 오류가 발생했습니다:\n\n${errorMessage}`, 'error', '표준 방식 스왑 실패');
     } finally {
       setIsLoading(false);
     }
@@ -245,7 +208,7 @@ export default function SwapPage() {
         >
           ← 뒤로
         </button>
-        <h1 className="text-xl font-bold text-white">XRPL AMM 스왑</h1>
+        <h1 className="text-xl font-bold text-white">XRPL AMM 스왑 (표준)</h1>
         <div className="w-16"></div>
       </div>
 
@@ -364,7 +327,7 @@ export default function SwapPage() {
           disabled={isLoading || !fromAmount || parseFloat(fromAmount) <= 0}
           className="w-full mt-6 bg-[#F2A003] hover:bg-[#E09400] text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? '스왑 중...' : 'XRPL AMM 스왑 실행'}
+          {isLoading ? '스왑 중...' : 'XRPL 표준 방식 스왑 실행'}
         </Button>
 
         {/* AMM 풀 정보 */}

@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useWalletList } from "../../hooks/useWalletAtoms";
 import { useEnabledAssets } from "../../hooks/useWalletAtoms";
-import { sendBlockchainTransaction } from "../../lib/api/blockchain-transfer";
+import { xrplTransferV2, TransferRequest } from "../../lib/xrpl/xrpl-transfer-v2";
 import { Button, Input, Card } from "../../components/ui";
 // createTestWalletIfNotExists 제거 - 사용자 등록 시에만 지갑 생성
 
@@ -156,16 +156,31 @@ function TransferContent() {
         return;
       }
 
-      const result = await sendBlockchainTransaction(
-        selectedWallet.addresses[selectedCurrency] || '',
-        toAddress,
-        amount,
-        userPhoneNumber, // 전화번호 전달
-        selectedCurrency
-      );
+      // Redis에서 개인키 가져오기
+      const response = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(userPhoneNumber)}`);
+      const userResult = await response.json();
+      
+      if (!response.ok || !userResult.success || !userResult.user?.privateKey) {
+        alert('개인키를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      // 표준 방식으로 지갑 설정
+      await xrplTransferV2.setWallet(userResult.user.privateKey);
+
+      // 표준 방식 전송 요청 생성
+      const transferRequest: TransferRequest = {
+        fromAddress: selectedWallet.addresses[selectedCurrency] || '',
+        toAddress: toAddress,
+        amount: amount,
+        currency: selectedCurrency,
+        memo: `친구 ${friendName || '알 수 없음'}에게 전송`
+      };
+
+      const result = await xrplTransferV2.sendTransfer(transferRequest);
 
       if (result.success) {
-        alert(`전송 성공!\n트랜잭션 해시: ${result.transactionHash}`);
+        alert(`표준 방식 전송 성공!\n트랜잭션 해시: ${result.transactionHash}\n잔액: ${result.balance} XRP`);
         
         // 서버에 트랜잭션 기록
         try {
@@ -201,8 +216,8 @@ function TransferContent() {
         alert(`전송 실패: ${result.error}`);
       }
     } catch (error) {
-      console.error('전송 실패:', error);
-      alert(`전송 실패: ${error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}`);
+      console.error('표준 방식 전송 실패:', error);
+      alert(`표준 방식 전송 실패: ${error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}`);
     } finally {
       setIsLoading(false);
     }

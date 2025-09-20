@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { xrplManagerV2 } from '../../../lib/xrpl/xrpl-manager-v2';
 
 // Redis 전용 사용자 프로필 저장소 (전화번호 기반)
 interface UserProfile {
@@ -102,17 +103,17 @@ export async function getAllMappings(): Promise<Array<[string, any]>> {
   }]);
 }
 
-// 사용자 등록
+// 사용자 등록 (표준 예제 기반)
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, walletAddress, userName, initialXrpBalance = '0', privateKey, publicKey, seed } = await request.json();
+    const { phoneNumber, userName } = await request.json();
 
-    console.log('👤 사용자 등록 요청:', { phoneNumber, walletAddress, userName, initialXrpBalance });
+    console.log('👤 표준 방식 사용자 등록 요청:', { phoneNumber, userName });
 
     // 입력 검증
-    if (!phoneNumber || !walletAddress || !userName) {
+    if (!phoneNumber || !userName) {
       return NextResponse.json(
-        { error: '전화번호, 지갑 주소, 이름이 모두 필요합니다.' },
+        { error: '전화번호와 이름이 필요합니다.' },
         { status: 400 }
       );
     }
@@ -126,13 +127,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 지갑 주소 형식 검증 (XRPL 주소)
-    if (!/^r[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(walletAddress)) {
-      return NextResponse.json(
-        { error: '올바른 XRPL 지갑 주소가 아닙니다.' },
-        { status: 400 }
-      );
-    }
+    // 표준 방식으로 새 지갑 생성
+    console.log('🔑 표준 방식으로 새 지갑 생성 중...');
+    const walletInfo = await xrplManagerV2.createNewWallet();
+    
+    console.log('✅ 새 지갑 생성 완료:', {
+      address: walletInfo.address,
+      seed: walletInfo.seed?.substring(0, 10) + '...',
+      publicKey: walletInfo.publicKey?.substring(0, 10) + '...'
+    });
 
     // 이름 검증
     if (userName.trim().length < 1 || userName.trim().length > 20) {
@@ -175,18 +178,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 사용자 프로필 생성
+    // 표준 방식 사용자 프로필 생성
     const userProfile: UserProfile = {
       phoneNumber: cleanPhoneNumber,
       userName: userName.trim(),
-      walletAddress,
-      privateKey: privateKey,     // 개인키 포함
-      publicKey: publicKey,     // 공개키 포함
-      seed: seed,               // 시드 포함
+      walletAddress: walletInfo.address,
+      privateKey: walletInfo.seed,     // 시드를 개인키로 사용 (표준 방식)
+      publicKey: walletInfo.publicKey, // 공개키 포함
+      seed: walletInfo.seed,           // 시드 포함
       assets: {
         xrp: {
-          balance: initialXrpBalance,
-          address: walletAddress,
+          balance: '0', // 초기 잔액 0
+          address: walletInfo.address,
         },
         tokens: [],
       },
@@ -203,15 +206,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '사용자가 성공적으로 등록되었습니다.',
+      message: '표준 방식으로 사용자가 성공적으로 등록되었습니다.',
       user: {
         phoneNumber: userProfile.phoneNumber,
         userName: userProfile.userName,
         walletAddress: userProfile.walletAddress,
+        publicKey: userProfile.publicKey,
+        seed: userProfile.seed,
         isOnline: userProfile.isOnline,
         createdAt: userProfile.createdAt,
       },
-      storage: 'Redis'
+      wallet: {
+        address: walletInfo.address,
+        seed: walletInfo.seed,
+        publicKey: walletInfo.publicKey
+      },
+      storage: 'Redis',
+      method: 'Standard XRPL Wallet Generation'
     });
 
   } catch (error) {
