@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-// 개발 환경에서는 메모리에 저장, 프로덕션에서는 Vercel KV 사용
+// Redis 전용 전화번호 매핑 저장소
 interface PhoneMapping {
   phoneNumber: string;
   walletAddress: string;
@@ -9,68 +9,67 @@ interface PhoneMapping {
   createdAt: string;
 }
 
-// 메모리 저장소 (개발용)
-const phoneMapping: Map<string, PhoneMapping> = new Map();
-
 // KV 연결 상태 확인
 const isKVAvailable = () => {
   return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 };
 
-// 전화번호 매핑 저장 함수
+// 전화번호 매핑 저장 함수 - Redis 전용
 async function savePhoneMapping(phoneNumber: string, mapping: PhoneMapping): Promise<void> {
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다. KV_REST_API_URL과 KV_REST_API_TOKEN을 확인하세요.');
+  }
+
   try {
-    if (isKVAvailable()) {
-      await kv.set(`phone:${phoneNumber}`, mapping);
-      console.log(`✅ KV에 전화번호 매핑 저장: ${phoneNumber}`);
-    } else {
-      phoneMapping.set(phoneNumber, mapping);
-      console.log(`✅ 메모리에 전화번호 매핑 저장: ${phoneNumber}`);
-    }
+    await kv.set(`phone:${phoneNumber}`, mapping);
+    console.log(`✅ Redis에 전화번호 매핑 저장: ${phoneNumber}`);
   } catch (error) {
-    console.error('KV 저장 실패, 메모리 사용:', error);
-    phoneMapping.set(phoneNumber, mapping);
+    console.error('❌ Redis 저장 실패:', error);
+    throw new Error(`Redis 저장 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
-// 전화번호 매핑 조회 함수
+// 전화번호 매핑 조회 함수 - Redis 전용
 async function getPhoneMapping(phoneNumber: string): Promise<PhoneMapping | null> {
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다. KV_REST_API_URL과 KV_REST_API_TOKEN을 확인하세요.');
+  }
+
   try {
-    if (isKVAvailable()) {
-      const mapping = await kv.get<PhoneMapping>(`phone:${phoneNumber}`);
-      if (mapping) {
-        console.log(`📞 KV에서 전화번호 조회 성공: ${phoneNumber}`);
-      }
-      return mapping;
-    } else {
-      return phoneMapping.get(phoneNumber) || null;
+    const mapping = await kv.get<PhoneMapping>(`phone:${phoneNumber}`);
+    if (mapping) {
+      console.log(`📞 Redis에서 전화번호 조회 성공: ${phoneNumber}`);
     }
+    return mapping;
   } catch (error) {
-    console.error('KV 조회 실패, 메모리 사용:', error);
-    return phoneMapping.get(phoneNumber) || null;
+    console.error('❌ Redis 조회 실패:', error);
+    throw new Error(`Redis 조회 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
-// 모든 매핑 조회 (디버그용)
-async function getAllMappings(): Promise<Array<[string, PhoneMapping]>> {
+// 모든 매핑 조회 (디버그용) - Redis 전용
+export async function getAllMappings(): Promise<Array<[string, PhoneMapping]>> {
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다. KV_REST_API_URL과 KV_REST_API_TOKEN을 확인하세요.');
+  }
+
   try {
-    if (isKVAvailable()) {
-      const keys = await kv.keys('phone:*');
-      const mappings: Array<[string, PhoneMapping]> = [];
-      for (const key of keys) {
-        const mapping = await kv.get<PhoneMapping>(key);
-        if (mapping) {
-          const phoneNumber = key.replace('phone:', '');
-          mappings.push([phoneNumber, mapping]);
-        }
+    const keys = await kv.keys('phone:*');
+    const mappings: Array<[string, PhoneMapping]> = [];
+
+    for (const key of keys) {
+      const mapping = await kv.get<PhoneMapping>(key);
+      if (mapping) {
+        const phoneNumber = key.replace('phone:', '');
+        mappings.push([phoneNumber, mapping]);
       }
-      return mappings;
-    } else {
-      return Array.from(phoneMapping.entries());
     }
+
+    console.log(`📞 Redis에서 모든 전화번호 매핑 조회 완료: ${mappings.length}개`);
+    return mappings;
   } catch (error) {
-    console.error('전체 조회 실패, 메모리 사용:', error);
-    return Array.from(phoneMapping.entries());
+    console.error('❌ Redis 전체 조회 실패:', error);
+    throw new Error(`Redis 전체 조회 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -120,19 +119,23 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    // 저장 (KV 또는 메모리)
+    // 저장 (Redis 전용)
     await savePhoneMapping(cleanPhoneNumber, mapping);
 
-    // 현재 저장된 매핑 수 확인
-    const allMappings = await getAllMappings();
-    console.log('📊 현재 저장된 매핑 수:', allMappings.length);
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
+    // 현재 저장된 매핑 수 확인 (실패해도 진행)
+    try {
+      const allMappings = await getAllMappings();
+      console.log('📊 현재 저장된 매핑 수:', allMappings.length);
+    } catch (error) {
+      console.warn('매핑 수 확인 실패 (무시됨):', error);
+    }
+    console.log('💾 저장소 타입: Redis');
 
     return NextResponse.json({
       success: true,
       message: '전화번호가 성공적으로 등록되었습니다.',
       phoneNumber: cleanPhoneNumber,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      storage: 'Redis'
     });
 
   } catch (error) {
@@ -162,7 +165,7 @@ export async function GET(request: NextRequest) {
 
     // 현재 저장된 매핑들 확인
     const allMappings = await getAllMappings();
-    console.log('💾 저장소 타입:', isKVAvailable() ? 'Vercel KV' : 'Memory');
+    console.log('💾 저장소 타입:', isKVAvailable() ? 'KV' : 'Memory');
 
     let mapping = null;
 
@@ -207,7 +210,7 @@ export async function GET(request: NextRequest) {
       phoneNumber: mapping.phoneNumber,
       walletAddress: mapping.walletAddress,
       userName: mapping.userName,
-      storage: isKVAvailable() ? 'KV' : 'Memory'
+      storage: 'Redis'
     });
 
   } catch (error) {
@@ -226,16 +229,19 @@ export async function DELETE(request: NextRequest) {
     const debug = searchParams.get('debug');
 
     if (debug === 'list') {
-      const allMappings = Array.from(phoneMapping.entries()).map(([phone, data]) => ({
+      const allMappings = await getAllMappings();
+      const formattedMappings = allMappings.map(([phone, data]) => ({
         phoneNumber: phone,
         walletAddress: data.walletAddress,
+        userName: data.userName,
         createdAt: data.createdAt,
       }));
 
       return NextResponse.json({
         success: true,
-        count: phoneMapping.size,
-        mappings: allMappings,
+        count: allMappings.length,
+        mappings: formattedMappings,
+        storage: 'Redis'
       });
     }
 

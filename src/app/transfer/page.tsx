@@ -20,7 +20,7 @@ function TransferContent() {
   const searchParams = useSearchParams();
   const [amount, setAmount] = useState("");
   const [toAddress, setToAddress] = useState("");
-  const [selectedCurrency, setSelectedCurrency] = useState("XRP");
+  const [selectedCurrency, setSelectedCurrency] = useState("");
   const [friendName, setFriendName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -164,15 +164,63 @@ function TransferContent() {
   };
 
   const getAvailableCurrencies = () => {
-    if (!selectedWallet || !enabledAssets.length) return [];
-    
-    return enabledAssets.filter(asset => 
-      selectedWallet.addresses[asset] && 
-      selectedWallet.privateKeys?.[asset]
-    );
+    console.log('🔍 자산 선택 디버그:', {
+      selectedWallet: !!selectedWallet,
+      enabledAssets,
+      walletAddresses: selectedWallet?.addresses,
+      walletPrivateKeys: selectedWallet?.privateKeys
+    });
+
+    if (!selectedWallet) {
+      console.log('❌ 선택된 지갑 없음');
+      return [];
+    }
+
+    if (!enabledAssets.length) {
+      console.log('❌ 활성화된 자산 없음, 기본값 사용');
+      return ['XRP']; // 기본적으로 XRP는 항상 사용 가능
+    }
+
+    const availableAssets = enabledAssets.filter(asset => {
+      const hasAddress = selectedWallet.addresses && selectedWallet.addresses[asset];
+      const hasPrivateKey = selectedWallet.privateKeys && selectedWallet.privateKeys[asset];
+
+      console.log(`🔍 ${asset} 체크:`, {
+        hasAddress: !!hasAddress,
+        hasPrivateKey: !!hasPrivateKey,
+        address: hasAddress,
+        privateKeyExists: !!hasPrivateKey
+      });
+
+      // XRP는 항상 포함 (주소나 개인키가 있으면)
+      if (asset === 'XRP') {
+        return hasAddress || hasPrivateKey;
+      }
+
+      return hasAddress && hasPrivateKey;
+    });
+
+    console.log('✅ 사용 가능한 자산:', availableAssets);
+
+    // 빈 배열이면 XRP를 기본으로 추가
+    if (availableAssets.length === 0) {
+      console.log('⚠️ 사용 가능한 자산이 없어서 XRP 기본 추가');
+      return ['XRP'];
+    }
+
+    return availableAssets;
   };
 
   const availableCurrencies = getAvailableCurrencies();
+
+  // 사용 가능한 자산이 로드되면 첫 번째 자산 자동 선택
+  useEffect(() => {
+    if (availableCurrencies.length > 0 && !selectedCurrency) {
+      const defaultCurrency = availableCurrencies.includes('XRP') ? 'XRP' : availableCurrencies[0];
+      setSelectedCurrency(defaultCurrency);
+      console.log('🎯 기본 자산 선택:', defaultCurrency);
+    }
+  }, [availableCurrencies.length, selectedCurrency]);
 
   return (
     <div className="min-h-screen" style={{ background: '#1A1A1A' }}>
@@ -196,17 +244,28 @@ function TransferContent() {
             <label className="block text-sm font-medium text-gray-300 mb-2">
               전송할 자산
             </label>
-            <select
-              value={selectedCurrency}
-              onChange={(e) => setSelectedCurrency(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 text-white rounded-xl border border-gray-700 focus:border-[#F2A003] focus:outline-none"
-            >
-              {availableCurrencies.map(currency => (
-                <option key={currency} value={currency}>
-                  {currency}
-                </option>
-              ))}
-            </select>
+            {availableCurrencies.length > 0 ? (
+              <select
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 text-white rounded-xl border border-gray-700 focus:border-[#F2A003] focus:outline-none"
+              >
+                {availableCurrencies.map(currency => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full px-4 py-3 bg-gray-800 text-gray-400 rounded-xl border border-gray-700">
+                사용 가능한 자산이 없습니다. 지갑을 확인해주세요.
+              </div>
+            )}
+            {availableCurrencies.length > 0 && (
+              <div className="mt-1 text-xs text-gray-500">
+                선택 가능한 자산: {availableCurrencies.join(', ')}
+              </div>
+            )}
           </div>
 
           {/* 금액 입력 */}
@@ -253,10 +312,13 @@ function TransferContent() {
           {/* 전송 버튼 */}
           <Button
             onClick={handleTransfer}
-            disabled={isLoading || !amount || !toAddress}
+            disabled={isLoading || !amount || !toAddress || !selectedCurrency || availableCurrencies.length === 0}
             className="w-full bg-[#F2A003] hover:bg-[#E09400] text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? '전송 중...' : '전송하기'}
+            {isLoading ? '전송 중...' :
+             availableCurrencies.length === 0 ? '사용 가능한 자산 없음' :
+             !selectedCurrency ? '자산을 선택하세요' :
+             '전송하기'}
           </Button>
         </div>
       </div>

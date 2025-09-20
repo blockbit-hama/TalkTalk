@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import { kv } from '@vercel/kv';
+import { getAllMappings } from '../phone-mapping/route';
 
-// Redis 전용 친구 관계 저장소
+// 친구 관계 저장소
 interface FriendRelationship {
   userId: string; // 사용자 ID (보통 지갑 주소)
   friendId: string;
@@ -13,57 +14,76 @@ interface FriendRelationship {
   createdAt: string;
 }
 
-// Redis 클라이언트 초기화
-let redis: Redis | null = null;
-
-const getRedisClient = () => {
-  if (!redis) {
-    try {
-      // Vercel KV 환경변수 우선 확인
-      if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-        redis = new Redis({
-          url: process.env.KV_REST_API_URL,
-          token: process.env.KV_REST_API_TOKEN,
-        });
-        console.log('✅ Redis 클라이언트 초기화 완료');
-      } else {
-        throw new Error('Redis 환경변수를 찾을 수 없습니다.');
-      }
-    } catch (error) {
-      console.error('❌ Redis 초기화 실패:', error);
-      throw error;
-    }
-  }
-  return redis;
+// KV 연결 상태 확인
+const isKVAvailable = () => {
+  return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 };
 
 // 친구 관계 저장 함수 - Redis 전용
 async function saveFriendRelationships(userId: string, relationships: FriendRelationship[]): Promise<void> {
-  const redisClient = getRedisClient();
-  await redisClient.set(`friends:${userId}`, relationships);
-  console.log(`✅ Redis에 친구 관계 저장: ${userId} (${relationships.length}개)`);
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다. KV_REST_API_URL과 KV_REST_API_TOKEN을 확인하세요.');
+  }
+
+  try {
+    await kv.set(`friends:${userId}`, relationships);
+    console.log(`✅ Redis에 친구 관계 저장: ${userId} (${relationships.length}개)`);
+  } catch (error) {
+    console.error('❌ Redis 저장 실패:', error);
+    throw new Error(`Redis 저장 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 // 친구 관계 조회 함수 - Redis 전용
 async function getFriendRelationships(userId: string): Promise<FriendRelationship[]> {
-  const redisClient = getRedisClient();
-  const relationships = await redisClient.get<FriendRelationship[]>(`friends:${userId}`);
-  return relationships || [];
+  if (!isKVAvailable()) {
+    throw new Error('Redis 연결 정보가 없습니다. KV_REST_API_URL과 KV_REST_API_TOKEN을 확인하세요.');
+  }
+
+  try {
+    const relationships = await kv.get<FriendRelationship[]>(`friends:${userId}`);
+    console.log(`📖 Redis에서 친구 관계 조회: ${userId} (${relationships?.length || 0}개)`);
+    return relationships || [];
+  } catch (error) {
+    console.error('❌ Redis 조회 실패:', error);
+    throw new Error(`Redis 조회 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
-// 모든 친구 관계 조회 (디버그용) - Redis 전용
+// 모든 친구 관계 조회 (디버그용) - KV 우선, 실패 시 로컬 메모리 사용
 async function getAllFriendRelationships(): Promise<Array<[string, FriendRelationship[]]>> {
-  const redisClient = getRedisClient();
-  const keys = await redisClient.keys('friends:*');
-  const relationships: Array<[string, FriendRelationship[]]> = [];
-  for (const key of keys) {
-    const userRelationships = await redisClient.get<FriendRelationship[]>(key);
-    if (userRelationships) {
-      const userId = key.replace('friends:', '');
+  try {
+    if (isKVAvailable()) {
+      const keys = await kv.keys('friends:*');
+      const relationships: Array<[string, FriendRelationship[]]> = [];
+
+      for (const key of keys) {
+        const userRelationships = await kv.get<FriendRelationship[]>(key);
+        if (userRelationships) {
+          const userId = key.replace('friends:', '');
+          relationships.push([userId, userRelationships]);
+        }
+      }
+
+      console.log(`📖 KV에서 모든 친구 관계 조회 완료: ${relationships.length}개 사용자`);
+      return relationships;
+    } else {
+      const relationships: Array<[string, FriendRelationship[]]> = [];
+      for (const [userId, userRelationships] of localFriendRelationships) {
+        relationships.push([userId, userRelationships]);
+      }
+      console.log(`📖 로컬 메모리에서 모든 친구 관계 조회 완료: ${relationships.length}개 사용자`);
+      return relationships;
+    }
+  } catch (error) {
+    console.error('❌ KV 전체 조회 실패, 로컬 메모리 사용:', error);
+    const relationships: Array<[string, FriendRelationship[]]> = [];
+    for (const [userId, userRelationships] of localFriendRelationships) {
       relationships.push([userId, userRelationships]);
     }
+    console.log(`📖 로컬 메모리에서 모든 친구 관계 조회 완료 (fallback): ${relationships.length}개 사용자`);
+    return relationships;
   }
-  return relationships;
 }
 
 // 사용자의 친구 목록 조회
@@ -79,14 +99,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 해당 사용자의 친구 목록 조회 (Redis)
+    // 해당 사용자의 친구 목록 조회 (KV)
     const userFriends = await getFriendRelationships(userId);
 
     return NextResponse.json({
       success: true,
       friends: userFriends,
       count: userFriends.length,
-      storage: 'Redis'
+      storage: isKVAvailable() ? 'KV' : 'Memory'
     });
 
   } catch (error) {
@@ -119,7 +139,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 사용자의 기존 친구 목록 가져오기 (KV 또는 메모리)
+    // 사용자의 기존 친구 목록 가져오기 (KV)
     const userFriends = await getFriendRelationships(userId);
 
     // 이미 친구인지 확인
@@ -153,9 +173,30 @@ export async function POST(request: NextRequest) {
     // 2. 상대방에게도 나를 친구로 추가 (양방향 관계 생성)
     console.log('\n=== 양방향 친구 관계 생성 시작 ===');
     try {
-      // 간단한 역방향 친구 관계 생성 (전화번호 매핑 없이)
+      // 현재 사용자의 실제 정보를 전화번호 매핑에서 가져오기
       let currentUserPhone = '000-0000-0000'; // 기본값
       let currentUserName = 'Friend'; // 기본값
+
+      // 현재 사용자의 지갑 주소로 전화번호 매핑 조회
+      try {
+        // getAllMappings 함수를 사용해서 메모리 fallback까지 활용
+        const allMappings = await getAllMappings();
+
+        for (const [phoneNumber, mapping] of allMappings) {
+          if (mapping.walletAddress === userId) {
+            currentUserPhone = mapping.phoneNumber;
+            currentUserName = mapping.userName;
+            console.log(`✅ 현재 사용자 정보 조회 성공: ${currentUserName} (${currentUserPhone})`);
+            break;
+          }
+        }
+
+        if (currentUserName === 'Friend') {
+          console.warn(`⚠️ 현재 사용자 정보를 찾을 수 없음: ${userId}`);
+        }
+      } catch (mappingError) {
+        console.warn('전화번호 매핑 조회 실패, 기본값 사용:', mappingError);
+      }
 
       // 상대방의 친구 목록에 현재 사용자를 추가
       const friendFriends = await getFriendRelationships(friendAddress);
@@ -179,7 +220,9 @@ export async function POST(request: NextRequest) {
 
         friendFriends.push(reverseFriendship);
         await saveFriendRelationships(friendAddress, friendFriends);
-        console.log('✅ 양방향 친구 관계 생성 완료');
+        console.log(`✅ 양방향 친구 관계 생성 완료: ${currentUserName} → ${friendName}`);
+      } else {
+        console.log('이미 양방향 친구 관계가 존재합니다.');
       }
     } catch (error) {
       console.error('양방향 친구 관계 생성 실패:', error);
@@ -189,7 +232,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: '친구가 성공적으로 추가되었습니다.',
       friend: newFriendship,
-      storage: 'Redis'
+      storage: isKVAvailable() ? 'KV' : 'Memory'
     });
 
   } catch (error) {
@@ -215,7 +258,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 사용자의 친구 목록 가져오기 (KV 또는 파일)
+    // 사용자의 친구 목록 가져오기 (KV)
     const userFriends = await getFriendRelationships(userId);
 
     // 친구 제거
@@ -228,8 +271,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 업데이트된 친구 목록 저장 (KV 또는 파일)
+    // 업데이트된 친구 목록 저장 (KV)
     await saveFriendRelationships(userId, updatedFriends);
+
+    // 양방향 관계도 제거
+    try {
+      const deletedFriend = userFriends.find(friend => friend.friendId === friendId);
+      if (deletedFriend) {
+        const friendFriends = await getFriendRelationships(deletedFriend.friendAddress);
+        const updatedFriendFriends = friendFriends.filter(friend => friend.friendId !== userId);
+
+        if (friendFriends.length !== updatedFriendFriends.length) {
+          await saveFriendRelationships(deletedFriend.friendAddress, updatedFriendFriends);
+          console.log('🗑️ 양방향 친구 관계 삭제 완료');
+        }
+      }
+    } catch (error) {
+      console.error('양방향 친구 관계 삭제 실패:', error);
+    }
 
     console.log('🗑️ 친구 삭제 완료:', friendId);
 
@@ -265,7 +324,7 @@ export async function PATCH(request: NextRequest) {
         success: true,
         totalUsers: allRelationships.length,
         relationships: formattedRelationships,
-        storage: 'Redis'
+        storage: isKVAvailable() ? 'KV' : 'Memory'
       });
     }
 

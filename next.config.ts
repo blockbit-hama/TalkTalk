@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   // Remove emotion compiler since we're using TailwindCSS
   transpilePackages: ['dlv', 'util-deprecate'],
   
-  // Docker를 위한 standalone 출력 활성화
-  output: 'standalone',
+  // Vercel 배포를 위한 설정 (standalone 비활성화)
+  // output: 'standalone',
 
   // 정적 생성 비활성화 (localStorage 등 클라이언트 기능 사용을 위해)
   trailingSlash: false,

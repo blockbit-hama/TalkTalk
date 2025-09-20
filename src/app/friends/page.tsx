@@ -90,17 +90,6 @@ export default function FriendsPage() {
     setIsLoading(true);
     
     try {
-      // 간단한 친구 데이터 생성 (서버 검색 없이)
-      const mockXrplAddress = `r${Math.random().toString(36).substr(2, 24)}`;
-      const friendData: Friend = {
-        id: `friend_${Date.now()}`,
-        name: newFriendName,
-        phoneNumber: newFriendPhone,
-        xrplAddress: mockXrplAddress,
-        isOnline: Math.random() > 0.5,
-        lastSeen: new Date()
-      };
-
       // useWallet에서 현재 사용자 주소 가져오기
       if (!wallet?.addresses?.XRP) {
         throw new Error('지갑 정보를 찾을 수 없습니다.');
@@ -108,7 +97,34 @@ export default function FriendsPage() {
 
       const currentUserId = wallet.addresses.XRP;
 
-      // 서버에 친구 관계 등록
+      // 1. 전화번호로 실제 지갑 주소 검색
+      const phoneSearchResponse = await fetch(`/api/phone-mapping?phoneNumber=${encodeURIComponent(newFriendPhone)}`);
+      const phoneSearchResult = await phoneSearchResponse.json();
+
+      let friendAddress: string;
+      let actualFriendName: string = newFriendName;
+
+      if (phoneSearchResponse.ok && phoneSearchResult.success) {
+        // 전화번호에 등록된 실제 지갑 주소 사용
+        friendAddress = phoneSearchResult.walletAddress;
+        actualFriendName = phoneSearchResult.userName; // 등록된 실제 이름 사용
+        console.log(`✅ 전화번호로 친구 찾기 성공: ${actualFriendName} (${friendAddress})`);
+      } else {
+        // 등록된 사용자가 없으면 에러 처리
+        throw new Error(`전화번호 ${newFriendPhone}는 등록되지 않은 사용자입니다. 먼저 해당 사용자가 앱에 가입해야 합니다.`);
+      }
+
+      // 2. 친구 데이터 생성
+      const friendData: Friend = {
+        id: `friend_${Date.now()}`,
+        name: actualFriendName,
+        phoneNumber: newFriendPhone,
+        xrplAddress: friendAddress,
+        isOnline: Math.random() > 0.5,
+        lastSeen: new Date()
+      };
+
+      // 3. 서버에 친구 관계 등록
       const friendResponse = await fetch('/api/friends', {
         method: 'POST',
         headers: {
@@ -117,24 +133,24 @@ export default function FriendsPage() {
         body: JSON.stringify({
           userId: currentUserId,
           friendId: friendData.id,
-          friendName: newFriendName,
+          friendName: actualFriendName,
           friendPhone: newFriendPhone,
-          friendAddress: friendData.xrplAddress
+          friendAddress: friendAddress
         }),
       });
 
       const friendResult = await friendResponse.json();
 
       if (friendResponse.ok && friendResult.success) {
-        // 즉시 폼 초기화 및 모달 닫기
+        // 백그라운드에서 친구 목록 새로고침 먼저 진행
+        await loadFriends();
+
+        // 폼 초기화 및 모달 닫기
         setNewFriendPhone("");
         setNewFriendName("");
         setShowAddFriend(false);
 
-        // 백그라운드에서 친구 목록 새로고침
-        loadFriends();
-
-        alert(`${newFriendName} 친구가 추가되었습니다!`);
+        alert(`${actualFriendName} 친구가 추가되었습니다!`);
       } else {
         throw new Error(friendResult.error || '친구 등록에 실패했습니다.');
       }
