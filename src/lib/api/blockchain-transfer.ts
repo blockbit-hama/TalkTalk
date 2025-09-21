@@ -216,7 +216,7 @@ export async function sendXRPLTransaction(
     });
 
     // XRPL 클라이언트 연결
-    const client = new Client('wss://s.altnet.rippletest.net:51233');
+    const client = new Client('wss://s.devnet.rippletest.net:51233');
     await client.connect();
 
     try {

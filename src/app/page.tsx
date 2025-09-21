@@ -334,22 +334,103 @@ export default function Home() {
 
 
   // XRPL 자산 잔액 데이터 가져오기
-  const xrpBalance = useWalletBalance(
-    selectedWallet?.addresses.XRP || '', 
-    'XRP'
-  );
+  const xrpAddress = selectedWallet?.addresses.XRP || '';
+  console.log(`🎯 [page.tsx] useWalletBalance 호출 전:`, {
+    xrpAddress,
+    hasAddress: !!xrpAddress,
+    addressLength: xrpAddress.length,
+    symbol: 'XRP'
+  });
+
+  // 임시: 직접 잔액 조회 테스트
+  const [directBalance, setDirectBalance] = useState<string>('0.00');
+  
+  useEffect(() => {
+    if (xrpAddress) {
+      console.log('🔍 직접 잔액 조회 시작...');
+      fetch(`/api/blockchain-balance?address=${xrpAddress}&symbol=XRP`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('🔍 직접 잔액 조회 결과:', data);
+          if (data && data.balance) {
+            const balanceXRP = parseFloat(data.balance);
+            setDirectBalance(balanceXRP.toFixed(2));
+          }
+        })
+        .catch(err => console.error('🔍 직접 잔액 조회 오류:', err));
+    }
+  }, [xrpAddress]);
+
+  const xrpBalance = useWalletBalance(xrpAddress, 'XRP');
+
+  console.log(`🎯 [page.tsx] useWalletBalance 호출 후:`, {
+    xrpBalance: {
+      data: xrpBalance.data,
+      isLoading: xrpBalance.isLoading,
+      isError: xrpBalance.isError,
+      status: xrpBalance.status
+    }
+  });
+
+  // 디버깅: 잔액 조회 상태 실시간 모니터링
+  useEffect(() => {
+    console.log('🔍 XRP 잔액 상태 변경:', {
+      isLoading: xrpBalance.isLoading,
+      isError: xrpBalance.isError,
+      error: xrpBalance.error,
+      data: xrpBalance.data,
+      status: xrpBalance.status,
+      fetchStatus: xrpBalance.fetchStatus,
+      address: selectedWallet?.addresses.XRP
+    });
+  }, [xrpBalance.isLoading, xrpBalance.isError, xrpBalance.data, xrpBalance.status, xrpBalance.fetchStatus, selectedWallet?.addresses.XRP]);
 
   // 잔액 데이터 캐시 무효화 함수
   const invalidateBalanceCache = () => {
     queryClient.invalidateQueries({ queryKey: ['walletBalance'] });
-    console.log('잔액 캐시 무효화 완료');
+    queryClient.removeQueries({ queryKey: ['walletBalance'] }); // 캐시 완전 삭제
+    console.log('잔액 캐시 무효화 및 삭제 완료');
+  };
+
+  // 수동 잔액 새로고침 함수
+  const refreshBalance = async () => {
+    console.log('🔄 수동 잔액 새로고침 시작...');
+    try {
+      await xrpBalance.refetch();
+      console.log('✅ 잔액 새로고침 완료');
+    } catch (error) {
+      console.error('❌ 잔액 새로고침 실패:', error);
+    }
   };
 
   // XRP 잔액 표시 (달러 대신 XRP 잔액, 소수점 2자리)
   const getDisplayBalance = () => {
     console.log('💰 XRP 잔액 표시:', xrpBalance.data);
+    console.log('🔍 직접 잔액:', directBalance);
+    console.log('🔍 selectedWallet:', selectedWallet);
+    console.log('🔍 selectedWallet?.addresses.XRP:', selectedWallet?.addresses.XRP);
+    console.log('🔍 xrpBalance 상태:', {
+      isLoading: xrpBalance.isLoading,
+      isError: xrpBalance.isError,
+      error: xrpBalance.error,
+      data: xrpBalance.data,
+      status: xrpBalance.status,
+      fetchStatus: xrpBalance.fetchStatus
+    });
+
+    // 임시: 직접 잔액이 있으면 사용
+    if (directBalance !== '0.00') {
+      console.log('✅ 직접 잔액 사용:', directBalance);
+      return { amount: directBalance, symbol: 'XRP' };
+    }
 
     if (!selectedWallet || !xrpBalance.data) {
+      console.log('❌ 잔액 표시 조건 실패:', {
+        hasWallet: !!selectedWallet,
+        hasData: !!xrpBalance.data,
+        walletAddress: selectedWallet?.addresses.XRP,
+        directBalance: directBalance
+      });
       return { amount: '0.00', symbol: 'XRP' };
     }
 
@@ -538,9 +619,9 @@ export default function Home() {
         return;
       }
 
-      // Testnet Faucet 요청 (네트워크를 TESTNET으로 통일)
-      console.log('XRPL Testnet Faucet API 호출 중...');
-      const result = await xrplFaucet.requestTestnetXRP(selectedWallet.addresses.XRP);
+      // Devnet Faucet 요청
+      console.log('XRPL Devnet Faucet API 호출 중...');
+      const result = await xrplFaucet.requestXRP(selectedWallet.addresses.XRP);
       console.log('Faucet API 응답:', result);
 
       if (result.success) {
@@ -599,6 +680,9 @@ export default function Home() {
 
         // 화면에 표시되는 사용자 이름 업데이트
         setDisplayUserName(userName.trim());
+
+        // 사용자 정보 업데이트 이벤트 발생
+        window.dispatchEvent(new CustomEvent('userInfoUpdated'));
       } else {
         alert('사용자 등록에 실패했습니다.');
       }
@@ -832,7 +916,26 @@ export default function Home() {
       <main className="main-box min-h-screen">
         {/* 내 XRP 잔액 */}
         <div className="main-summary-box">
-          <div className="main-summary-amount">{displayBalance.amount} {displayBalance.symbol}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div className="main-summary-amount">{displayBalance.amount} {displayBalance.symbol}</div>
+
+            {/* 수동 새로고침 버튼 */}
+            <button
+              onClick={() => {
+                console.log('🔄 수동 잔액 새로고침 버튼 클릭');
+                xrpBalance.refresh && xrpBalance.refresh();
+                invalidateBalanceCache();
+              }}
+              className="text-[#F2A003] hover:text-[#E09400] transition-colors p-2"
+              title="잔액 새로고침"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 4V10H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M23 20V14H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14L18.36 18.36A9 9 0 0 1 3.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
 
           {/* 자산 흐름 차트 */}
           <div style={{

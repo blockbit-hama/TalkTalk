@@ -12,8 +12,8 @@ export const xrplTransactionsAtom = atom<XRPLTransaction[]>([]);
 
 // Network Info
 export const xrplNetworkInfoAtom = atom<XRPLNetworkInfo>({
-  network: 'testnet',
-  server: 'wss://s.altnet.rippletest.net:51233',
+  network: 'devnet',
+  server: 'wss://s.devnet.rippletest.net:51233',
   fee: '0.000012',
   reserve: '10',
 });
@@ -219,13 +219,11 @@ export const sendXRPAtom = atom(
 
 export const setXRPLNetworkAtom = atom(
   null,
-  (get, set, network: 'mainnet' | 'testnet' | 'devnet') => {
+  (get, set, network: 'mainnet' | 'devnet') => {
     const networkInfo: XRPLNetworkInfo = {
       network,
       server: network === 'mainnet' 
         ? 'wss://xrplcluster.com'
-        : network === 'testnet'
-        ? 'wss://s.altnet.rippletest.net:51233'
         : 'wss://s.devnet.rippletest.net:51233',
       fee: '0.000012',
       reserve: '10',

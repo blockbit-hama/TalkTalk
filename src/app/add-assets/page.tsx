@@ -18,7 +18,7 @@ interface Asset {
   changeColor: string;
   isEnabled: boolean;
   derivationPath?: string;
-  isTestnet?: boolean;
+  isDevnet?: boolean;
   rpcUrl?: string;
   networkType?: string;
 }
@@ -51,15 +51,15 @@ export default function AddAssetsPage() {
   const { updateEnabledAssets, loadEnabledAssets } = useEnabledAssets();
   const { generateNewAssetKey } = useWallet();
 
-  // XRPL Testnet 실제 자산 목록 (테스트넷에서 작동하는 자산만)
+  // XRPL Devnet 실제 자산 목록 (devnet에서 작동하는 자산만)
   const supportedAssets = [
-    { id: "xrp", symbol: "XRP", name: "XRP Ledger", icon: "X", networkType: "XRPL Testnet", issuer: null },
-    { id: "testnet-tst", symbol: "TST", name: "테스트 토큰 (TST)", icon: "T", networkType: "XRPL Testnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
+    { id: "xrp", symbol: "XRP", name: "XRP Ledger", icon: "X", networkType: "XRPL Devnet", issuer: null },
+    { id: "devnet-tst", symbol: "TST", name: "테스트 토큰 (TST)", icon: "T", networkType: "XRPL Devnet Token", requiresTrustLine: true, issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd" },
   ];
 
   // XRPL 자산 가격 정보 로드
   const loadAssetPrices = async () => {
-    // XRP 가격만 조회하고 Testnet 토큰은 고정 가격 사용
+    // XRP 가격만 조회하고 Devnet 토큰은 고정 가격 사용
     const cryptoPrices = await getCryptoPrices(['XRP']);
 
     // 가격 정보를 assets 배열에 매핑
@@ -74,11 +74,11 @@ export default function AddAssetsPage() {
         change = priceData ? formatChangePercentage(priceData.priceChangePercentage24h) : '0.00%';
         changeColor = priceData ? getChangeColor(priceData.priceChangePercentage24h) : '#A0A0B0';
       } else {
-        // Testnet 토큰들은 고정 가격
-        const testnetPrices: { [key: string]: string } = {
+        // Devnet 토큰들은 고정 가격
+        const devnetPrices: { [key: string]: string } = {
           'TST': '$0.10',
         };
-        price = testnetPrices[asset.symbol] || '$0.10';
+        price = devnetPrices[asset.symbol] || '$0.10';
         change = '0.00%';
         changeColor = '#6FCF97';
       }

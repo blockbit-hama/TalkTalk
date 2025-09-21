@@ -201,9 +201,10 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
   const [enabledAssets, setEnabledAssets] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
 
-  // TST 토큰 잔액 조회 (XRPL Testnet에서 XRP 주소 사용)
+  // TST 토큰 잔액 조회 (XRPL Devnet에서 XRP 주소 사용) - TST가 활성화된 경우에만
+  const shouldFetchTST = enabledAssets.includes('TST') && !!selectedWallet?.addresses.XRP;
   const tstBalance = useWalletBalance(
-    selectedWallet?.addresses.XRP || '',
+    shouldFetchTST ? selectedWallet.addresses.XRP : '',
     'TST'
   );
 

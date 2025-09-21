@@ -9,12 +9,12 @@ export interface MockToken {
   decimals: number;
 }
 
-// XRPL Testnet 실제 토큰 정의 (TST만)
+// XRPL Devnet 실제 토큰 정의 (TST만)
 export const MOCK_TOKENS: MockToken[] = [
   {
     currency: 'TST',
-    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Testnet Test Token - 실제 활성화된 토큰
-    name: 'Testnet Test Token',
+    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Devnet Test Token - 실제 활성화된 토큰
+    name: 'Devnet Test Token',
     symbol: 'TST',
     decimals: 6
   }
@@ -327,9 +327,9 @@ export class XRPLAMMManagerV2 {
   }
 
 
-  // 실제 Testnet에서 사용 가능한 토큰 확인
+  // 실제 Devnet에서 사용 가능한 토큰 확인
   async checkAvailableTokens(): Promise<void> {
-    console.log('🔍 Testnet에서 사용 가능한 토큰 확인 중...');
+    console.log('🔍 Devnet에서 사용 가능한 토큰 확인 중...');
 
     // 모든 토큰이 같은 발행자를 사용하므로 하나만 확인
     const issuer = 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd';
@@ -361,9 +361,9 @@ export class XRPLAMMManagerV2 {
     }
   }
 
-  // Testnet에서 실제 사용 가능한 토큰 찾기
+  // Devnet에서 실제 사용 가능한 토큰 찾기
   async findActiveTokens(): Promise<MockToken[]> {
-    console.log('🔍 Testnet에서 실제 활성화된 토큰 찾는 중...');
+    console.log('🔍 Devnet에서 실제 활성화된 토큰 찾는 중...');
 
     const activeTokens: MockToken[] = [];
 

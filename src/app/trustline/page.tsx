@@ -6,7 +6,7 @@ import { useWallet } from "../../hooks/useWallet";
 import { xrplAMM } from "../../lib/xrpl/xrpl-amm";
 import { Wallet } from 'xrpl';
 
-interface TestnetToken {
+interface DevnetToken {
   currency: string;
   issuer: string;
   name: string;
@@ -15,16 +15,16 @@ interface TestnetToken {
 }
 
 interface TrustLineStatus {
-  token: TestnetToken;
+  token: DevnetToken;
   isSet: boolean;
   isLoading: boolean;
 }
 
-// XRPL Testnet 실제 토큰 (TST만)
-const TESTNET_TOKENS: TestnetToken[] = [
+// XRPL Devnet 실제 토큰 (TST만)
+const DEVNET_TOKENS: DevnetToken[] = [
   {
     currency: 'TST',
-    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Testnet TST 토큰
+    issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd', // Devnet TST 토큰
     name: '테스트 토큰 (TST)',
     symbol: 'TST',
     decimals: 6
@@ -42,7 +42,7 @@ export default function TrustLinePage() {
   }, [selectedWallet]);
 
   const initializeTrustLines = () => {
-    const initialStatus = TESTNET_TOKENS.map(token => ({
+    const initialStatus = DEVNET_TOKENS.map(token => ({
       token,
       isSet: false, // 실제로는 XRPL에서 확인해야 함
       isLoading: false
@@ -50,7 +50,7 @@ export default function TrustLinePage() {
     setTrustLines(initialStatus);
   };
 
-  const handleSetTrustLine = async (token: TestnetToken) => {
+  const handleSetTrustLine = async (token: DevnetToken) => {
     if (!selectedWallet || !selectedWallet.phoneNumber) {
       alert('XRP 지갑이 필요합니다.');
       return;
@@ -118,7 +118,7 @@ export default function TrustLinePage() {
       let errorMessage = '알 수 없는 오류';
       if (error instanceof Error) {
         if (error.message.includes('network')) {
-          errorMessage = '네트워크 연결 오류. Testnet 연결을 확인해주세요.';
+          errorMessage = '네트워크 연결 오류. Devnet 연결을 확인해주세요.';
         } else if (error.message.includes('funds')) {
           errorMessage = 'XRP 잔액이 부족합니다. 수수료와 예약금이 필요합니다.';
         } else {
@@ -137,7 +137,7 @@ export default function TrustLinePage() {
   };
 
   const handleSetAllTrustLines = async () => {
-    for (const token of TESTNET_TOKENS) {
+    for (const token of DEVNET_TOKENS) {
       if (!trustLines.find(tl => tl.token.currency === token.currency)?.isSet) {
         await handleSetTrustLine(token);
       }
@@ -233,12 +233,12 @@ export default function TrustLinePage() {
           </ul>
         </Card>
 
-        {/* Testnet 안내 */}
+        {/* Devnet 안내 */}
         <Card className="mt-4 p-4 bg-blue-900/20 border-blue-700">
-          <h3 className="text-blue-400 font-semibold mb-2">🌐 XRPL Testnet 실제 토큰 연동</h3>
+          <h3 className="text-blue-400 font-semibold mb-2">🌐 XRPL Devnet 실제 토큰 연동</h3>
           <ul className="text-blue-300 text-sm space-y-1">
-            <li>• 실제 XRPL Testnet 토큰 발행자와 Trust Line 설정</li>
-            <li>• TST는 실제 Testnet에서 작동하는 토큰입니다</li>
+            <li>• 실제 XRPL Devnet 토큰 발행자와 Trust Line 설정</li>
+            <li>• TST는 실제 Devnet에서 작동하는 토큰입니다</li>
             <li>• 설정 후 실제 XRPL 네트워크에서 토큰 송수신 가능</li>
             <li>• 모든 Trust Line은 XRPL Explorer에서 확인 가능</li>
             <li>• Faucet으로 XRP 충전 후 토큰 수신 테스트 가능</li>

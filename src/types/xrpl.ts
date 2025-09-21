@@ -40,7 +40,7 @@ export interface XRPLTransferRequest {
 }
 
 export interface XRPLNetworkInfo {
-  network: 'mainnet' | 'testnet' | 'devnet';
+  network: 'mainnet' | 'devnet';
   server: string;
   fee: string;
   reserve: string;

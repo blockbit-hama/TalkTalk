@@ -62,14 +62,13 @@ export class XRPLAMMManager {
   private client: Client | null = null;
   private wallet: Wallet | null = null;
 
-  constructor(private network: 'mainnet' | 'testnet' | 'devnet' = 'devnet') {
+  constructor(private network: 'mainnet' | 'devnet' = 'devnet') {
     this.initializeClient();
   }
 
   private initializeClient() {
     const servers = {
       mainnet: 'wss://s1.ripple.com',
-      testnet: 'wss://s.altnet.rippletest.net:51233',
       devnet: 'wss://s.devnet.rippletest.net:51233'
     };
 
@@ -338,4 +337,4 @@ export class XRPLAMMManager {
 }
 
 // Singleton instance
-export const xrplAMM = new XRPLAMMManager('testnet');
+export const xrplAMM = new XRPLAMMManager('devnet');

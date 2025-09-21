@@ -7,8 +7,8 @@ import { useWallet } from "../../hooks/useWallet";
 import { xrplAMMV2, SwapRequest, SwapResult } from "../../lib/xrpl/xrpl-amm-v2";
 import { Wallet } from 'xrpl';
 
-// Testnet에서 작동하는 토큰만 정의
-const TESTNET_TOKENS = [
+// Devnet에서 작동하는 토큰만 정의
+const DEVNET_TOKENS = [
   {
     currency: 'TST',
     issuer: 'rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd',
@@ -245,7 +245,7 @@ export default function SwapPage() {
   };
 
   // 사용 가능한 통화 목록
-  const availableCurrencies = ['XRP', ...TESTNET_TOKENS.map(t => t.symbol)];
+  const availableCurrencies = ['XRP', ...DEVNET_TOKENS.map(t => t.symbol)];
 
   return (
     <div className="min-h-screen" style={{ background: '#1A1A1A' }}>

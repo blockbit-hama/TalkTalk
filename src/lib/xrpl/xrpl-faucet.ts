@@ -12,7 +12,6 @@ export interface FaucetResult {
 
 export class XRPLFaucet {
   private devnetFaucetUrl = 'https://faucet.devnet.rippletest.net/accounts';
-  private testnetFaucetUrl = 'https://faucet.altnet.rippletest.net/accounts';
 
   /**
    * Devnet Faucet에서 XRP 충전 요청 (기존 주소로 직접 전송)
@@ -61,61 +60,13 @@ export class XRPLFaucet {
     }
   }
 
-  /**
-   * Testnet Faucet에서 XRP 충전 요청
-   */
-  async requestTestnetXRP(address: string): Promise<FaucetResult> {
-    try {
-      console.log('Testnet Faucet XRP 요청:', address);
-
-      const response = await fetch(this.testnetFaucetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          destination: address
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Testnet Faucet 요청 실패: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      console.log('Testnet Faucet 응답:', data);
-
-      return {
-        success: true,
-        account: {
-          classicAddress: data.account?.classicAddress || address,
-          xAddress: data.account?.xAddress || '',
-          secret: data.account?.secret || ''
-        },
-        balance: data.balance || '1000000000' // 1000 XRP in drops
-      };
-
-    } catch (error) {
-      console.error('Testnet Faucet 오류:', error);
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Testnet Faucet 요청 실패'
-      };
-    }
-  }
 
 
   /**
-   * 네트워크에 따른 Faucet 요청
+   * Devnet Faucet 요청
    */
-  async requestXRP(address: string, network: 'devnet' | 'testnet' = 'devnet'): Promise<FaucetResult> {
-    if (network === 'devnet') {
-      return this.requestDevnetXRP(address);
-    } else {
-      return this.requestTestnetXRP(address);
-    }
+  async requestXRP(address: string): Promise<FaucetResult> {
+    return this.requestDevnetXRP(address);
   }
 
   /**

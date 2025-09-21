@@ -5,20 +5,50 @@ class XRPLClient {
   private client: Client | null = null;
   private wallet: Wallet | null = null;
   private networkInfo: XRPLNetworkInfo = {
-    network: 'testnet',
-    server: 'wss://s.altnet.rippletest.net:51233',
+    network: 'devnet',
+    server: 'wss://s.devnet.rippletest.net:51233',
     fee: '0.000012',
     reserve: '10',
   };
 
   async connect(): Promise<boolean> {
     try {
-      this.client = new Client(this.networkInfo.server);
+      // 기존 연결이 있으면 먼저 정리
+      if (this.client) {
+        try {
+          await this.client.disconnect();
+        } catch (e) {
+          // 무시
+        }
+      }
+
+      this.client = new Client(this.networkInfo.server, {
+        timeout: 20000,
+        connectionTimeout: 15000
+      });
+
       await this.client.connect();
       console.log('XRPL client connected');
       return true;
     } catch (error) {
       console.error('Failed to connect to XRPL:', error);
+
+      // devnet 연결 실패 시 대체 서버 시도
+      if (this.networkInfo.network === 'devnet') {
+        try {
+          console.log('🔄 devnet 대체 서버로 재시도...');
+          this.client = new Client('wss://s.devnet.rippletest.net:51234', {
+            timeout: 20000,
+            connectionTimeout: 15000
+          });
+          await this.client.connect();
+          console.log('✅ devnet 대체 서버 연결 성공');
+          return true;
+        } catch (altError) {
+          console.error('❌ 대체 서버도 실패:', altError);
+        }
+      }
+
       return false;
     }
   }
@@ -362,20 +392,12 @@ class XRPLClient {
     return this.networkInfo;
   }
 
-  setNetwork(network: 'mainnet' | 'testnet' | 'devnet'): void {
+  setNetwork(network: 'mainnet' | 'devnet'): void {
     switch (network) {
       case 'mainnet':
         this.networkInfo = {
           network: 'mainnet',
           server: 'wss://xrplcluster.com',
-          fee: '0.000012',
-          reserve: '10',
-        };
-        break;
-      case 'testnet':
-        this.networkInfo = {
-          network: 'testnet',
-          server: 'wss://s.altnet.rippletest.net:51233',
           fee: '0.000012',
           reserve: '10',
         };

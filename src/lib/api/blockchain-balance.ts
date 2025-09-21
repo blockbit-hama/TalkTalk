@@ -638,36 +638,28 @@ import { MOCK_TOKENS } from '../xrpl/xrpl-amm';
  */
 export async function getXRPLBalance(address: string, symbol: string): Promise<BlockchainBalance | null> {
   try {
-    console.log(`XRPL 잔액 조회 시작: ${symbol} - ${address}`);
-
-    // XRPL 클라이언트가 연결되어 있지 않으면 연결
-    await xrplClient.connect();
+    // XRPL 클라이언트 연결 상태 확인 및 연결
+    if (!xrplClient.isConnected()) {
+      const connected = await xrplClient.connect();
+      if (!connected) {
+        throw new Error('XRPL 네트워크 연결 실패');
+      }
+    }
 
     if (symbol.toUpperCase() === 'XRP') {
-      // XRP 잔액 조회
-      const accountInfo = await xrplClient.getAccountInfo(address);
-
-      if (!accountInfo) {
-        console.log('XRP 계정 정보를 찾을 수 없음 (새 계정일 가능성)');
-        return {
-          address,
-          symbol: 'XRP',
-          balance: '0.000000',
-          decimals: 6,
-          network: 'xrpl'
-        };
+      // XRP 잔액 조회 - XRPL 내장 getXrpBalance 메서드 사용
+      const client = xrplClient.getClient();
+      if (!client) {
+        throw new Error('XRPL 클라이언트가 연결되지 않음');
       }
 
-      // drops to XRP 변환 (1 XRP = 1,000,000 drops)
-      const balanceDrops = parseInt(accountInfo.balance, 10);
-      const balanceXRP = balanceDrops / 1000000;
-
-      console.log(`XRP 잔액 조회 성공: ${balanceXRP} XRP (${balanceDrops} drops)`);
+      // XRPL 내장 getXrpBalance 메서드 사용 (빠른 조회)
+      const balanceXRP = await client.getXrpBalance(address);
 
       return {
         address,
         symbol: 'XRP',
-        balance: balanceXRP.toFixed(6),
+        balance: parseFloat(balanceXRP).toFixed(6),
         decimals: 6,
         network: 'xrpl'
       };
@@ -704,10 +696,19 @@ export async function getXRPLBalance(address: string, symbol: string): Promise<B
         network: 'xrpl'
       };
     }
-  } catch (error) {
-    console.error(`XRPL 잔액 조회 중 오류 (${symbol}):`, error);
+  } catch (error: any) {
+    // Account not found는 새 계정으로 처리
+    if (error.message && error.message.includes('Account not found')) {
+      return {
+        address,
+        symbol: symbol.toUpperCase(),
+        balance: '0.000000',
+        decimals: symbol.toUpperCase() === 'XRP' ? 6 : 2,
+        network: 'xrpl'
+      };
+    }
 
-    // 오류 발생 시 기본값 반환 (연결 실패, 계정 없음 등)
+    // 다른 에러는 기본값 반환
     return {
       address,
       symbol: symbol.toUpperCase(),

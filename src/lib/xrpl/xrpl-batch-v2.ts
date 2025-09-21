@@ -95,6 +95,7 @@ export class XRPLBatchManagerV2 {
       const seq = accountInfo.result.account_data.Sequence;
 
       console.log(`📦 XRPL 네이티브 Batch Payment 시작: ${payments.length}개 결제 처리 (${mode} 모드)`);
+      console.log('📋 Payment 목록:', payments);
 
       // Batch 모드에 따른 플래그 설정
       const batchFlags = {
@@ -127,6 +128,13 @@ export class XRPLBatchManagerV2 {
         };
       });
 
+      console.log(`🔧 생성된 RawTransactions 개수: ${rawTransactions.length}`);
+      console.log('🔧 RawTransactions:', rawTransactions);
+
+      if (rawTransactions.length === 0) {
+        throw new Error('RawTransactions 배열이 비어있습니다. payments 배열을 확인해주세요.');
+      }
+
       // Batch 트랜잭션 생성
       const batchTx: any = {
         TransactionType: "Batch",
@@ -136,9 +144,17 @@ export class XRPLBatchManagerV2 {
         Sequence: seq
       };
 
+      console.log('🔧 최종 Batch 트랜잭션:', batchTx);
+
       // 트랜잭션 실행
+      console.log('⏳ autofill 실행 전...');
       const prepared = await this.client.autofill(batchTx);
+      console.log('✅ autofill 완료:', prepared);
+      console.log('🔧 autofill 후 RawTransactions:', prepared.RawTransactions);
+
       const signed = this.wallet.sign(prepared);
+      console.log('🔐 서명 완료:', signed);
+
       const result = await this.client.submitAndWait(signed.tx_blob);
 
       console.log('📦 XRPL Batch 트랜잭션 결과:', {
