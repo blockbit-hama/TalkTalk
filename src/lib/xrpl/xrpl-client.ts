@@ -137,10 +137,23 @@ class XRPLClient {
 
     // WebSocket 연결이 완료될 때까지 대기
     if (!this.client.isConnected()) {
-      await this.client.connect();
+      try {
+        await this.client.connect();
+        // 연결 완료까지 잠시 대기
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('XRPL 클라이언트 연결 실패:', error);
+        return [];
+      }
     }
 
     try {
+      // 연결 상태 재확인
+      if (!this.client.isConnected()) {
+        console.log('❌ XRPL 클라이언트가 연결되지 않음');
+        return [];
+      }
+
       const accountLines = await this.client.request({
         command: 'account_lines',
         account: address,

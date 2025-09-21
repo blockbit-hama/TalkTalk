@@ -169,7 +169,7 @@ export default function SettingsPage() {
                         생성: {new Date(wallet.createdAt).toLocaleDateString()}
                       </div>
                       <div className="text-gray-500 text-xs font-mono mt-1">
-                        {wallet.masterAddress.slice(0, 20)}...
+                        {wallet.masterAddress?.slice(0, 20) || wallet.addresses?.XRP?.slice(0, 20) || 'No address'}...
                       </div>
                     </div>
                     <button
