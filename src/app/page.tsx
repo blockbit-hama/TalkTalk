@@ -353,9 +353,10 @@ export default function Home() {
       return { amount: '0.00', symbol: 'XRP' };
     }
 
-    // 소수점 2자리로 포맷
+    // 소수점 2자리로 절삭 (반올림 안함)
     const balance = parseFloat(xrpBalance.data.balance || '0');
-    const formattedBalance = balance.toFixed(2);
+    const truncatedBalance = Math.floor(balance * 100) / 100;
+    const formattedBalance = truncatedBalance.toFixed(2);
 
     return {
       amount: formattedBalance,
