@@ -345,16 +345,20 @@ export default function Home() {
     console.log('잔액 캐시 무효화 완료');
   };
 
-  // XRP 잔액 표시 (달러 대신 XRP 잔액)
+  // XRP 잔액 표시 (달러 대신 XRP 잔액, 소수점 2자리)
   const getDisplayBalance = () => {
     console.log('💰 XRP 잔액 표시:', xrpBalance.data);
 
     if (!selectedWallet || !xrpBalance.data) {
-      return { amount: '0.000000', symbol: 'XRP' };
+      return { amount: '0.00', symbol: 'XRP' };
     }
 
+    // 소수점 2자리로 포맷
+    const balance = parseFloat(xrpBalance.data.balance || '0');
+    const formattedBalance = balance.toFixed(2);
+
     return {
-      amount: xrpBalance.data.balance || '0.000000',
+      amount: formattedBalance,
       symbol: 'XRP'
     };
   };
