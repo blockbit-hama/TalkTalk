@@ -345,24 +345,21 @@ export default function Home() {
     console.log('잔액 캐시 무효화 완료');
   };
 
-  // 총 달러 금액 계산 (XRPL 자산들의 합계)
-  const calculateTotalUSD = () => {
-    console.log('💰 계산에 사용할 자산:', enabledAssets);
+  // XRP 잔액 표시 (달러 대신 XRP 잔액)
+  const getDisplayBalance = () => {
+    console.log('💰 XRP 잔액 표시:', xrpBalance.data);
 
-    if (!selectedWallet || !enabledAssets.length) return 0;
-
-    let total = 0;
-
-    // XRPL 자산들의 USD 가치 합계
-    if (enabledAssets.includes('XRP') && xrpBalance.data) {
-      const xrpValue = parseFloat(xrpBalance.data.usdValue.replace('$', '').replace(',', ''));
-      total += xrpValue;
+    if (!selectedWallet || !xrpBalance.data) {
+      return { amount: '0.000000', symbol: 'XRP' };
     }
 
-    return total;
+    return {
+      amount: xrpBalance.data.balance || '0.000000',
+      symbol: 'XRP'
+    };
   };
 
-  const totalUSD = calculateTotalUSD();
+  const displayBalance = getDisplayBalance();
 
   // 활성화된 자산들에 대한 주소가 모두 존재하는지 확인하고 누락된 것들을 생성
   const ensureAllAddressesExist = async () => {
@@ -828,9 +825,9 @@ export default function Home() {
 
       {/* 메인 컨텐츠 */}
       <main className="main-box min-h-screen">
-        {/* 내 ETH/달러/쿠폰 */}
+        {/* 내 XRP 잔액 */}
         <div className="main-summary-box">
-          <div className="main-summary-amount">${totalUSD.toFixed(2)}</div>
+          <div className="main-summary-amount">{displayBalance.amount} {displayBalance.symbol}</div>
 
           {/* 자산 흐름 차트 */}
           <div style={{

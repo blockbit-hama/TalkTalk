@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWalletBalance } from '@/hooks/queries/useWalletBalance';
 
 // 아름다운 국기 아이콘 컴포넌트들
 const XRPIcon = ({ size = 72 }: { size?: number }) => (
@@ -200,6 +201,12 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
   const [enabledAssets, setEnabledAssets] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
 
+  // TST 토큰 잔액 조회 (XRPL Testnet에서 XRP 주소 사용)
+  const tstBalance = useWalletBalance(
+    selectedWallet?.addresses.XRP || '',
+    'TST'
+  );
+
   // 클라이언트 사이드에서만 실행
   useEffect(() => {
     setIsClient(true);
@@ -251,7 +258,7 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
             </div>
           )}
 
-          {enabledAssets.includes('TST') && (
+          {enabledAssets.includes('TST') && selectedWallet?.addresses.XRP && (
             <div className="common-card" style={{ padding: '10px 20px', gap: 16, minHeight: '70px', display: 'flex', alignItems: 'center' }}>
               <KRWIcon size={56} />
               <div className="balance-card-inner" style={{ flex: 1 }}>
@@ -259,10 +266,10 @@ export default function ClientOnlyAssetDisplay({ selectedWallet, xrpBalance }: C
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                 <div className="balance-amount" style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                  0.000000 TST
+                  {tstBalance?.data?.balance || '0.000000'} TST
                 </div>
                 <div className="balance-value" style={{ color: '#888A92', fontSize: '14px' }}>
-                  $0.00
+                  {tstBalance?.data?.usdValue || '$0.00'}
                 </div>
               </div>
             </div>
